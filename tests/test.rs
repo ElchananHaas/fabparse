@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use funnelparse::{self, ContextError, Parser};
 
 #[test]
@@ -135,6 +137,66 @@ fn fnoption_slice_parser_error() {
     assert!(res.is_err());
     assert_eq!([2, 3, 4], slice);
 }
+
+fn slice_result_func(val: i32) -> Result<i32, <i32 as FromStr>::Err> {
+    if val == 1 {
+        <i32 as FromStr>::from_str("5")
+    } else {
+        <i32 as FromStr>::from_str("a")
+    }
+}
+
+fn str_result_func(c: char) -> Result<i32, <i32 as FromStr>::Err> {
+    if c == 'a' {
+        <i32 as FromStr>::from_str("5")
+    } else {
+        <i32 as FromStr>::from_str("a")
+    }
+}
+
+
+#[test]
+fn fnresult_slice_parser_success() {
+    let mut slice = [1, 2, 3, 4].as_slice();
+    let res: Result<_, ContextError> = slice_result_func.parse(&mut slice);
+    assert_eq!(5, res.unwrap());
+    assert_eq!([2, 3, 4], slice);
+}
+
+#[test]
+fn fnresult_slice_parser_error() {
+    let mut slice = [2, 3, 4].as_slice();
+    let res: Result<_, ContextError> = slice_result_func.parse(&mut slice);
+    assert!(res.is_err());
+    assert_eq!([2, 3, 4], slice);
+}
+
+
+#[test]
+fn fnresult_str_parser_success() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> = str_result_func.parse(&mut input);
+    assert_eq!(5, res.unwrap());
+    assert_eq!("bc", input);
+}
+
+#[test]
+fn fnresult_str_parser_error() {
+    let mut input = "cde";
+    let res: Result<_, ContextError> = str_result_func.parse(&mut input);
+    assert!(res.is_err());
+    assert_eq!("cde", input);
+}
+
+
+#[test]
+fn strtag_unicode_success() {
+    let mut input = "😀🇷🇺";
+    let res: Result<_, ContextError> = '😀'.parse(&mut input);
+    assert_eq!('😀', res.unwrap());
+    assert_eq!("🇷🇺", input);
+}
+
 
 #[test]
 fn tag_ergonomics() {

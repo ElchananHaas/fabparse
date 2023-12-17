@@ -193,3 +193,25 @@ where
         }
     }
 }
+
+pub struct FnResultStrParser;
+impl<'a, V, U, FErr> Parser<'a, str, V, FnResultStrParser> for U
+where
+    U: Fn(char) -> Result<V, FErr>,
+    FErr: Error + Send + Sync + 'static,
+{
+    fn parse<E: ParserError>(&mut self, input: &mut &'a str) -> Result<V, E> {
+        let first_char = input.chars().next();
+        if let Some(char) = first_char {
+            match self(char) {
+                Ok(res) => {
+                    *input = &input[char.len_utf8()..];
+                    Ok(res)
+                }
+                Err(err) => Err(E::from_external_error(*input, ParserType::Tag, err)),
+            }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
