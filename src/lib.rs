@@ -1,7 +1,8 @@
 //Some code is based on Winnow by Elliot Page + other contributors.
 
-mod tag;
 mod branch;
+mod sequence;
+mod tag;
 
 use std::error::Error;
 
@@ -23,8 +24,8 @@ pub trait ParserError {
         cause: E,
     ) -> Self;
     /**
-     * Get the location of the error. This is used in combinators to recognize the parser that made 
-     * the most progress, returning more helpful errors. 
+     * Get the location of the error. This is used in combinators to recognize the parser that made
+     * the most progress, returning more helpful errors.
      */
     fn get_loc(&self) -> Option<usize>;
 }
@@ -32,7 +33,7 @@ pub trait ParserError {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParserType {
     Tag,
-    Alt
+    Alt,
 }
 #[derive(Debug)]
 pub struct ContextError {
@@ -61,7 +62,7 @@ impl ParserError for ContextError {
         }
     }
     fn get_loc(&self) -> Option<usize> {
-        return Some(self.location)
+        return Some(self.location);
     }
 }
 
@@ -69,6 +70,6 @@ pub trait Parser<'a, I: ?Sized, O, ParserType> {
     fn parse<E: ParserError>(&mut self, input: &mut &'a I) -> Result<O, E>;
 }
 
-pub fn alt<T>(val: T) -> branch::Alt<T>{
+pub fn alt<T>(val: T) -> branch::Alt<T> {
     branch::Alt(val)
 }

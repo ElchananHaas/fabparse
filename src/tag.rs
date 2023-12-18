@@ -1,7 +1,6 @@
-use std::{ops::Range, error::Error};
+use std::{error::Error, ops::Range};
 
-use crate::{Parser, ParserError, ParserType,};
-
+use crate::{Parser, ParserError, ParserType};
 
 pub struct CharStrParser;
 impl<'a> Parser<'a, str, char, CharStrParser> for char {
@@ -176,4 +175,3 @@ impl<'a> Parser<'a, str, char, CharRangeStrParser> for Range<char> {
         }
     }
 }
-
