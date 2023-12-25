@@ -194,3 +194,21 @@ impl<'a, T, U> Parser<'a, [T], T, RangeSliceParser> for U
         }
     }
 }
+
+pub struct Take(pub usize);
+impl<'a> Parser<'a, str, &'a str, CharRangeStrParser> for Take {
+    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<&'a str, E> {
+        let mut char_iter = input.chars();
+        let mut pos = 0;
+        for _ in 0..self.0 {
+            if let Some(char) = char_iter.next(){
+                pos += char.len_utf8();
+            } else {
+                return Err(E::from_parser_error(*input, ParserType::Tag));
+            }
+        }
+        let (res, rest) = input.split_at(pos);
+        *input = rest;
+        Ok(res)
+    }
+}

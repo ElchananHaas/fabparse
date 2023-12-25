@@ -77,3 +77,8 @@ pub fn alt<T>(val: T) -> branch::Alt<T> {
 pub fn permutation<T>(val: T) -> branch::Permutation<T> {
     branch::Permutation(val)
 }
+
+pub fn take(count: usize) -> tag::Take {
+    tag::Take(count)
+}
+
