@@ -15,7 +15,7 @@ macro_rules! sequence_impl {
             where $(
                 $parser: Parser<'a, I, $otype, $ptype>,
             )+{
-            fn parse<E: ParserError>(&mut self, input: &mut &'a I) -> Result<($($otype,)+), E> {
+            fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<($($otype,)+), E> {
                 let startloc = *input;
                 let ($($parserlower,)+) = self;
                 let ($($rval,)+);
@@ -36,6 +36,7 @@ macro_rules! sequence_impl {
 
     };
 }
+
 sequence_impl!(SeqAlt1 P1 p1 r1 O1 T1);
 sequence_impl!(SeqAlt2 P1 p1 r1 O1 T1 P2 p2 r2 O2 T2);
 sequence_impl!(SeqAlt3 P1 p1 r1 O1 T1 P2 p2 r2 O2 T2 P3 p3 r3 O3 T3);

@@ -67,9 +67,13 @@ impl ParserError for ContextError {
 }
 
 pub trait Parser<'a, I: ?Sized, O, ParserType> {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a I) -> Result<O, E>;
+    fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E>;
 }
 
 pub fn alt<T>(val: T) -> branch::Alt<T> {
     branch::Alt(val)
+}
+
+pub fn permutation<T>(val: T) -> branch::Permutation<T> {
+    branch::Permutation(val)
 }

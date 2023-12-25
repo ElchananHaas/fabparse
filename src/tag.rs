@@ -4,7 +4,7 @@ use crate::{Parser, ParserError, ParserType};
 
 pub struct CharStrParser;
 impl<'a> Parser<'a, str, char, CharStrParser> for char {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a str) -> Result<char, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<char, E> {
         if (*input).starts_with(*self) {
             let (_, rest) = input.split_at(self.len_utf8());
             *input = rest;
@@ -20,7 +20,7 @@ impl<'a, T: PartialEq, U> Parser<'a, [T], &'a [T], SliceSliceParser> for U
 where
     U: AsRef<[T]>,
 {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a [T]) -> Result<&'a [T], E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
         let tag: &[T] = self.as_ref();
         if input.len() < tag.len() {
             Err(E::from_parser_error(*input, ParserType::Tag))
@@ -38,7 +38,7 @@ where
 
 pub struct ItemSliceParser;
 impl<'a, T: PartialEq + Clone> Parser<'a, [T], T, ItemSliceParser> for T {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a [T]) -> Result<T, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<T, E> {
         if !input.is_empty() && input[0] == *self {
             let res = &input[0];
             *input = &input[1..];
@@ -51,7 +51,7 @@ impl<'a, T: PartialEq + Clone> Parser<'a, [T], T, ItemSliceParser> for T {
 
 pub struct FnBoolSliceParser;
 impl<'a, T: Clone + 'a, U: Fn(T) -> bool> Parser<'a, [T], T, FnBoolSliceParser> for U {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a [T]) -> Result<T, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<T, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -68,7 +68,7 @@ impl<'a, T: Clone + 'a, U: Fn(T) -> bool> Parser<'a, [T], T, FnBoolSliceParser> 
 
 pub struct FnBoolStrParser;
 impl<'a, U: Fn(char) -> bool> Parser<'a, str, char, FnBoolStrParser> for U {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a str) -> Result<char, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<char, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             if self(char) {
@@ -85,7 +85,7 @@ impl<'a, U: Fn(char) -> bool> Parser<'a, str, char, FnBoolStrParser> for U {
 
 pub struct FnOptionSliceParser;
 impl<'a, T: Clone + 'a, V, U: Fn(T) -> Option<V>> Parser<'a, [T], V, FnOptionSliceParser> for U {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a [T]) -> Result<V, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<V, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -101,7 +101,7 @@ impl<'a, T: Clone + 'a, V, U: Fn(T) -> Option<V>> Parser<'a, [T], V, FnOptionSli
 
 pub struct FnOptionStrParser;
 impl<'a, V, U: Fn(char) -> Option<V>> Parser<'a, str, V, FnOptionStrParser> for U {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a str) -> Result<V, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<V, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             if let Some(res) = self(char) {
@@ -122,7 +122,7 @@ where
     U: Fn(T) -> Result<V, FErr>,
     FErr: Error + Send + Sync + 'static,
 {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a [T]) -> Result<V, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<V, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -143,7 +143,7 @@ where
     U: Fn(char) -> Result<V, FErr>,
     FErr: Error + Send + Sync + 'static,
 {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a str) -> Result<V, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<V, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             match self(char) {
@@ -161,7 +161,7 @@ where
 
 pub struct CharRangeStrParser;
 impl<'a> Parser<'a, str, char, CharRangeStrParser> for Range<char> {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a str) -> Result<char, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<char, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             if self.contains(&char) {
@@ -180,7 +180,7 @@ impl<'a> Parser<'a, str, char, CharRangeStrParser> for Range<char> {
 pub struct RangeSliceParser;
 impl<'a, T, U> Parser<'a, [T], T, RangeSliceParser> for U
     where T: PartialOrd + Clone, U : RangeBounds<T> {
-    fn parse<E: ParserError>(&mut self, input: &mut &'a [T]) -> Result<T, E> {
+    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<T, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
