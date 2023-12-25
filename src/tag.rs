@@ -1,4 +1,4 @@
-use std::{error::Error, ops::Range};
+use std::{error::Error, ops::{Range, RangeBounds}};
 
 use crate::{Parser, ParserError, ParserType};
 
@@ -172,6 +172,25 @@ impl<'a> Parser<'a, str, char, CharRangeStrParser> for Range<char> {
             }
         } else {
             Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
+
+pub struct RangeSliceParser;
+impl<'a, T, U> Parser<'a, [T], T, RangeSliceParser> for U
+    where T: PartialOrd + Clone, U : RangeBounds<T> {
+    fn parse<E: ParserError>(&mut self, input: &mut &'a [T]) -> Result<T, E> {
+        if input.is_empty() {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        } else {
+            if self.contains(&input[0]) {
+                    let res = input[0].clone();
+                    *input = &input[1..];
+                    Ok(res)
+            } else {
+                Err(E::from_parser_error(*input, ParserType::Tag))
+            }
         }
     }
 }
