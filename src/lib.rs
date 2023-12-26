@@ -5,7 +5,7 @@ mod combinator;
 mod sequence;
 mod tag;
 
-use std::{error::Error, fmt::Debug};
+use std::{error::Error, fmt::Debug, marker::PhantomData};
 
 use combinator::Map;
 
@@ -140,11 +140,11 @@ pub trait Parser<'a, I: ?Sized, O, ParserType> {
      * The trait implementation requires that P is a parser and
      * F is a function from the output type of that parser.
      */
-    fn map<F>(self, func: F) -> Map<Self, F>
+    fn map<F, FIn>(self, func: F) -> Map<Self, F, FIn, O, I>
     where
         Self: Sized,
     {
-        Map { parser: self, func }
+        Map { parser: self, func, pf: PhantomData, po: PhantomData, pi: PhantomData}
     }
 }
 
@@ -183,10 +183,4 @@ pub fn permutation<T>(parsers: T) -> branch::Permutation<T> {
  */
 pub fn take(count: usize) -> tag::Take {
     tag::Take(count)
-}
-
-pub fn map<P, F>(parser: P, func: F) -> Map<P, F>
-where
-{
-    Map { parser, func }
 }
