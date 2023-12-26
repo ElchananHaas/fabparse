@@ -7,8 +7,7 @@ mod tag;
 
 use std::{error::Error, fmt::Debug};
 
-use combinator::Map;
-
+use combinator::{Map, Try};
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -37,6 +36,7 @@ pub trait ParserError {
 pub enum ParserType {
     Tag,
     Alt,
+    Try,
 }
 #[derive(Debug)]
 pub struct ContextError {
@@ -117,4 +117,13 @@ pub fn take(count: usize) -> tag::Take {
  */
 pub fn map<P, F>(parser: P, func: F) -> Map<P, F> {
     Map { parser, func }
+}
+
+/**
+ * Constructs a parser that maps the results of the inner parser.
+ * The trait implementation requires that P is a parser and
+ * F is a function from the output type of that parser.
+ */
+pub fn try_output<P>(parser: P) -> Try<P> {
+    Try { parser }
 }
