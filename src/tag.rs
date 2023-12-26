@@ -77,75 +77,46 @@ where
     }
 }
 
-pub struct FnOptionSliceParser;
-impl<'a, T: Clone + 'a, V, U: Fn(T) -> Option<V>> Parser<'a, [T], V, FnOptionSliceParser> for U {
-    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<V, E> {
-        if input.is_empty() {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            if let Some(res) = self(input[0].clone()) {
-                *input = &input[1..];
-                Ok(res)
-            } else {
-                Err(E::from_parser_error(*input, ParserType::Tag))
-            }
-        }
-    }
-}
-
-pub struct FnOptionStrParser;
-impl<'a, V, U: Fn(char) -> Option<V>> Parser<'a, str, V, FnOptionStrParser> for U {
-    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<V, E> {
-        let first_char = input.chars().next();
-        if let Some(char) = first_char {
-            if let Some(res) = self(char) {
-                *input = &input[char.len_utf8()..];
-                Ok(res)
-            } else {
-                Err(E::from_parser_error(*input, ParserType::Tag))
-            }
-        } else {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        }
-    }
-}
-
-pub struct FnResultSliceParser;
-impl<'a, T: Clone + 'a, V, FErr, U> Parser<'a, [T], V, FnResultSliceParser> for U
+pub struct FnOptionSeqParser;
+impl<'a, S, U, Item, FnOut> Parser<'a, S, FnOut, FnOptionSeqParser> for U
 where
-    U: Fn(T) -> Result<V, FErr>,
-    FErr: Error + Send + Sync + 'static,
+    Item: Clone,
+    U: Fn(Item) -> Option<FnOut>,
+    S: ?Sized + Sequence<Item = Item> + PartialEq,
 {
-    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<V, E> {
-        if input.is_empty() {
-            Err(E::from_parser_error(*input, ParserType::Tag))
+    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<FnOut, E> {
+        if let Some((first, rest)) = Sequence::try_split_front(input) {
+            if let Some(out) = self(first.clone()) {
+                *input = rest;
+                Ok(out)
+            } else {
+                Err(E::from_parser_error(*input, ParserType::Tag))
+            }
         } else {
-            match self(input[0].clone()) {
-                Ok(res) => {
-                    *input = &input[1..];
-                    Ok(res)
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
+
+pub struct FnResultSeqParser;
+impl<'a, S, U, Item, FnOut, FnErr> Parser<'a, S, FnOut, FnResultSeqParser> for U
+where
+    Item: Clone,
+    U: Fn(Item) -> Result<FnOut, FnErr>,
+    S: ?Sized + Sequence<Item = Item> + PartialEq,
+    FnErr: Error + Send + Sync + 'static,
+{
+    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<FnOut, E> {
+        if let Some((first, rest)) = Sequence::try_split_front(input) {
+            match self(first.clone()) {
+                Ok(out) => {
+                    *input = rest;
+                    Ok(out)
+                },
+                Err(err) => {
+                    Err(E::from_external_error(*input, ParserType::Tag, err))
                 }
-                Err(err) => Err(E::from_external_error(*input, ParserType::Tag, err)),
-            }
-        }
-    }
-}
-
-pub struct FnResultStrParser;
-impl<'a, V, U, FErr> Parser<'a, str, V, FnResultStrParser> for U
-where
-    U: Fn(char) -> Result<V, FErr>,
-    FErr: Error + Send + Sync + 'static,
-{
-    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<V, E> {
-        let first_char = input.chars().next();
-        if let Some(char) = first_char {
-            match self(char) {
-                Ok(res) => {
-                    *input = &input[char.len_utf8()..];
-                    Ok(res)
-                }
-                Err(err) => Err(E::from_external_error(*input, ParserType::Tag, err)),
             }
         } else {
             Err(E::from_parser_error(*input, ParserType::Tag))
@@ -153,70 +124,43 @@ where
     }
 }
 
-pub struct CharRangeStrParser;
-impl<'a> Parser<'a, str, char, CharRangeStrParser> for Range<char> {
-    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<char, E> {
-        let first_char = input.chars().next();
-        if let Some(char) = first_char {
-            if self.contains(&char) {
-                *input = &input[char.len_utf8()..];
-                Ok(char)
+
+pub struct RangeSeqParser;
+impl<'a, Item, S, U> Parser<'a, S, Item, RangeSeqParser> for U
+    where S: ?Sized + Sequence<Item = Item> + PartialEq,
+    Item: PartialOrd,
+    U: RangeBounds<Item> {
+    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<Item, E> {
+        if let Some((first, rest)) = Sequence::try_split_front(input) {
+            if self.contains(&first) {
+                *input = rest;
+                Ok(first)
             } else {
                 Err(E::from_parser_error(*input, ParserType::Tag))
             }
         } else {
             Err(E::from_parser_error(*input, ParserType::Tag))
-        }
-    }
-}
-
-pub struct RangeSliceParser;
-impl<'a, T, U> Parser<'a, [T], T, RangeSliceParser> for U
-where
-    T: PartialOrd + Clone,
-    U: RangeBounds<T>,
-{
-    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<T, E> {
-        if input.is_empty() {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            if self.contains(&input[0]) {
-                let res = input[0].clone();
-                *input = &input[1..];
-                Ok(res)
-            } else {
-                Err(E::from_parser_error(*input, ParserType::Tag))
-            }
         }
     }
 }
 
 pub struct Take(pub usize);
-impl<'a> Parser<'a, str, &'a str, Take> for Take {
-    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<&'a str, E> {
-        let mut char_iter = input.chars();
-        let mut pos = 0;
+impl<'a, S> Parser<'a, S, &'a S, Take> for Take 
+    where S: ?Sized + Sequence + PartialEq,
+    {
+    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<&'a S, E> {
+        let orig_input = *input;
         for _ in 0..self.0 {
-            if let Some(char) = char_iter.next() {
-                pos += char.len_utf8();
+            if let Some((_, rest)) = Sequence::try_split_front(input) {
+                *input = rest;
             } else {
+                *input = orig_input;
                 return Err(E::from_parser_error(*input, ParserType::Tag));
             }
         }
-        let (res, rest) = input.split_at(pos);
+        let pos = orig_input.len() - input.len();
+        let (res, rest) = orig_input.try_split_at(pos).expect("Something went very wrong in the take parser");
         *input = rest;
         Ok(res)
-    }
-}
-
-impl<'a, T> Parser<'a, [T], &'a [T], Take> for Take {
-    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
-        if input.len() < self.0 {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            let (res, rest) = input.split_at(self.0);
-            *input = rest;
-            Ok(res)
-        }
     }
 }
