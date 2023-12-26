@@ -7,7 +7,7 @@ mod tag;
 
 use std::{error::Error, fmt::Debug, marker::PhantomData};
 
-use combinator::{Map, MapT, Try};
+use combinator::{ParserMap, Try, ParserTryMap};
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -37,6 +37,7 @@ pub enum ParserType {
     Tag,
     Alt,
     Try,
+    TryMap,
 }
 #[derive(Debug)]
 pub struct ContextError {
@@ -72,21 +73,30 @@ impl ParserError for ContextError {
 pub trait Parser<'a, I: ?Sized, O, ParserType> {
     fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E>;
 
-    fn try_val(self) -> Try<Self>
+    fn parser_try(self) -> Try<Self>
     where
         Self: Sized,
     {
         Try { parser: self }
     }
 
-    fn map<FOut>(self, func: fn(O) -> FOut) -> MapT<Self, I, O, FOut>
+    fn parser_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut>
     where
         Self: Sized,
     {
-        MapT {
+        ParserMap {
             parser: self,
             func,
             phantom_i: PhantomData,
+        }
+    }
+
+    fn try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut>
+    where Self: Sized {
+        ParserTryMap {
+            parser: self,
+            func,
+            phantom_i: PhantomData
         }
     }
 }
