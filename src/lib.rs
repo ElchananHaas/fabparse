@@ -12,25 +12,25 @@ use combinator::Map;
 /**
  * Trait for a sequence. This trait is implemented for slices and for str
  */
-pub trait Sequence: Debug {
-    type Item: Clone + PartialEq;
+pub trait Sequence {
+    type Item: Clone;
     /**
      * Try to split the sequence at an index. If this is out of range
-     * this function will return None. 
+     * this function will return None.
      */
     fn try_split_at<'a>(&'a self, mid: usize) -> Option<(&'a Self, &'a Self)>;
     fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)>;
     fn len(&self) -> usize;
 }
 
-impl<T: Debug + Clone + PartialEq> Sequence for [T] {
+impl<T: Debug + Clone> Sequence for [T] {
     type Item = T;
 
     fn try_split_at<'a>(&'a self, mid: usize) -> Option<(&'a Self, &'a Self)> {
         if mid > self.len() {
             None
         } else {
-            Some(self.split_at(mid)) 
+            Some(self.split_at(mid))
         }
     }
 
@@ -41,9 +41,9 @@ impl<T: Debug + Clone + PartialEq> Sequence for [T] {
             Some((seq[0].clone(), &seq[1..]))
         }
     }
-     fn len(&self) -> usize {
-         self.len()
-     }
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
 
 impl Sequence for str {
@@ -53,17 +53,13 @@ impl Sequence for str {
         if mid > self.len() {
             None
         } else {
-            Some(self.split_at(mid)) 
+            Some(self.split_at(mid))
         }
     }
 
     fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)> {
         let res = seq.chars().next();
-        res.map(|char| 
-            {
-                (char, &seq[char.len_utf8()..])
-            }
-        )
+        res.map(|char| (char, &seq[char.len_utf8()..]))
     }
     fn len(&self) -> usize {
         self.len()
@@ -137,8 +133,10 @@ pub trait Parser<'a, I: ?Sized, O, ParserType> {
      * The trait implementation requires that P is a parser and
      * F is a function from the output type of that parser.
      */
-    fn map<F>(self, func: F) -> Map<Self, F> 
-        where Self : Sized {
+    fn map<F>(self, func: F) -> Map<Self, F>
+    where
+        Self: Sized,
+    {
         Map { parser: self, func }
     }
 }

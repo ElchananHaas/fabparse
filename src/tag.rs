@@ -5,12 +5,34 @@ use std::{
 
 use crate::{Parser, ParserError, ParserType, Sequence};
 
-
 pub struct ItemSeqParser;
-impl<'a, Item: PartialEq, S: ?Sized + Sequence<Item = Item>> Parser<'a, S, Item, ItemSeqParser> for Item {
+impl<'a, Item, S> Parser<'a, S, Item, ItemSeqParser> for Item
+where
+    Item: PartialEq,
+    S: ?Sized + Sequence<Item = Item>,
+{
     fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<Item, E> {
-        if let Some((start, rest)) = Sequence::try_split_front(input){
+        if let Some((start, rest)) = Sequence::try_split_front(input) {
             if start == *self {
+                *input = rest;
+                Ok(start)
+            } else {
+                Err(E::from_parser_error(*input, ParserType::Tag))
+            }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
+pub struct SeqSeqParser;
+impl<'a, Item, S> Parser<'a, S, &'a S, SeqSeqParser> for S
+where
+    S: ?Sized + Sequence<Item = Item> + PartialEq,
+{
+    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<&'a S, E> {
+        if let Some((start, rest)) = input.try_split_at(self.len()) {
+            if start == self {
                 *input = rest;
                 Ok(start)
             } else {
