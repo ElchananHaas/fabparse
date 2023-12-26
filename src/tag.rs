@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    ops::{Range, RangeBounds},
+    ops::{Range, RangeBounds}
 };
 
 use crate::{Parser, ParserError, ParserType, Sequence};
@@ -43,25 +43,16 @@ where
         }
     }
 }
-
-pub struct SliceSliceParser;
-impl<'a, T: PartialEq, U> Parser<'a, [T], &'a [T], SliceSliceParser> for U
+/**
+ * This impl is needed to make constant arrays work as parsers.
+ */
+pub struct ConstGenericSeqParser;
+impl<'a, T, const N: usize> Parser<'a, [T], &'a [T], ConstGenericSeqParser> for [T; N]
 where
-    U: AsRef<[T]>,
+    T: PartialEq + Clone,
 {
     fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
-        let tag: &[T] = self.as_ref();
-        if input.len() < tag.len() {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            let (res, rest) = input.split_at(tag.len());
-            if res == tag {
-                *input = rest;
-                Ok(res)
-            } else {
-                Err(E::from_parser_error(*input, ParserType::Tag))
-            }
-        }
+        self.as_slice().parse(input)
     }
 }
 
