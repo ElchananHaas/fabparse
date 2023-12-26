@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    ops::{Range, RangeBounds}
+    ops::{Range, RangeBounds},
 };
 
 use crate::{Parser, ParserError, ParserType, Sequence};
@@ -56,31 +56,18 @@ where
     }
 }
 
-pub struct FnBoolSliceParser;
-impl<'a, T: Clone + 'a, U: Fn(T) -> bool> Parser<'a, [T], T, FnBoolSliceParser> for U {
-    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<T, E> {
-        if input.is_empty() {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            if self(input[0].clone()) {
-                let res = &input[0];
-                *input = &input[1..];
-                Ok(res.clone())
-            } else {
-                Err(E::from_parser_error(*input, ParserType::Tag))
-            }
-        }
-    }
-}
-
-pub struct FnBoolStrParser;
-impl<'a, U: Fn(char) -> bool> Parser<'a, str, char, FnBoolStrParser> for U {
-    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<char, E> {
-        let first_char = input.chars().next();
-        if let Some(char) = first_char {
-            if self(char) {
-                *input = &input[char.len_utf8()..];
-                Ok(char)
+pub struct FnBoolSeqParser;
+impl<'a, S, U, Item> Parser<'a, S, Item, FnBoolSeqParser> for U
+where
+    Item: Clone,
+    U: Fn(Item) -> bool,
+    S: ?Sized + Sequence<Item = Item> + PartialEq,
+{
+    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<Item, E> {
+        if let Some((first, rest)) = Sequence::try_split_front(input) {
+            if self(first.clone()) {
+                *input = rest;
+                Ok(first)
             } else {
                 Err(E::from_parser_error(*input, ParserType::Tag))
             }
