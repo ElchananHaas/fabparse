@@ -5,9 +5,9 @@ mod combinator;
 mod sequence;
 mod tag;
 
-use std::{error::Error, fmt::Debug};
+use std::{error::Error, fmt::Debug, marker::PhantomData};
 
-use combinator::{Map, Try};
+use combinator::{Map, MapT, Try};
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -71,6 +71,24 @@ impl ParserError for ContextError {
 
 pub trait Parser<'a, I: ?Sized, O, ParserType> {
     fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E>;
+
+    fn try_val(self) -> Try<Self>
+    where
+        Self: Sized,
+    {
+        Try { parser: self }
+    }
+
+    fn map<FOut>(self, func: fn(O) -> FOut) -> MapT<Self, I, O, FOut>
+    where
+        Self: Sized,
+    {
+        MapT {
+            parser: self,
+            func,
+            phantom_i: PhantomData,
+        }
+    }
 }
 
 /**
@@ -108,22 +126,4 @@ pub fn permutation<T>(parsers: T) -> branch::Permutation<T> {
  */
 pub fn take(count: usize) -> tag::Take {
     tag::Take(count)
-}
-
-/**
- * Constructs a parser that maps the results of the inner parser.
- * The trait implementation requires that P is a parser and
- * F is a function from the output type of that parser.
- */
-pub fn map<P, F>(parser: P, func: F) -> Map<P, F> {
-    Map { parser, func }
-}
-
-/**
- * Constructs a parser that maps the results of the inner parser.
- * The trait implementation requires that P is a parser and
- * F is a function from the output type of that parser.
- */
-pub fn try_output<P>(parser: P) -> Try<P> {
-    Try { parser }
 }
