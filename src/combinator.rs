@@ -94,3 +94,25 @@ where
         }
     }
 }
+
+
+impl<'a, P, M, O, PType, I: ?Sized, Err> Parser<'a, I, O, ParserMapOptionT<PType, M>>
+    for ParserTryMap<P, I, M, Result<O, Err>>
+where
+    P: Parser<'a, I, M, PType>,
+    Err: Error + Send + Sync + 'static,
+{
+    fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E> {
+        let checkpoint = *input;
+        match self.parser.parse::<E>(input) {
+            Ok(res) => {
+                let func_result = (self.func)(res);
+                func_result.map_err(|err| {
+                    *input = checkpoint;
+                    E::from_external_error(*input, ParserType::TryMap, err)
+                })
+            }
+            Err(err) => Err(err),
+        }
+    }
+}
