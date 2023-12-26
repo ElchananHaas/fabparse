@@ -71,16 +71,6 @@ impl ParserError for ContextError {
 
 pub trait Parser<'a, I: ?Sized, O, ParserType> {
     fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E>;
-
-    /**
-     * Constructs a parser that maps the results of the inner parser.
-     * The trait implementation requires that P is a parser and
-     * F is a function from the output type of that parser.
-     */
-    fn map<F>(self, func: F) -> Map<Self, F> 
-        where Self : Sized {
-        Map { parser: self, func }
-    }
 }
 
 /**
@@ -118,4 +108,13 @@ pub fn permutation<T>(parsers: T) -> branch::Permutation<T> {
  */
 pub fn take(count: usize) -> tag::Take {
     tag::Take(count)
+}
+
+/**
+ * Constructs a parser that maps the results of the inner parser.
+ * The trait implementation requires that P is a parser and
+ * F is a function from the output type of that parser.
+ */
+pub fn map<P, F>(parser: P, func: F) -> Map<P, F> {
+    Map { parser, func }
 }

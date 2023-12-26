@@ -31,6 +31,7 @@ pub struct Try<P> {
 pub struct TryParser<T> {
     t: PhantomData<T>
 }
+
 impl<'a, I, O, P, PType> Parser<'a, I, O, TryParser<PType>> for Try<P> 
     where P: Parser<'a, I, Option<O>, PType> {
     fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E> {
