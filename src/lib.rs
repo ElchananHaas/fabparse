@@ -16,10 +16,17 @@ pub trait Sequence {
     type Item: Clone;
     /**
      * Try to split the sequence at an index. If this is out of range
-     * this function will return None.
+     * this function will return None. For strings, mid must be a 
+     * byte index.
      */
     fn try_split_at<'a>(&'a self, mid: usize) -> Option<(&'a Self, &'a Self)>;
+    /**
+     * Try to split of the first item/char of the sequence.
+     */
     fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)>;
+    /**
+     * Return the length of the sequence. For strings, this will be in bytes.
+     */
     fn len(&self) -> usize;
 }
 
@@ -176,4 +183,10 @@ pub fn permutation<T>(parsers: T) -> branch::Permutation<T> {
  */
 pub fn take(count: usize) -> tag::Take {
     tag::Take(count)
+}
+
+pub fn map<P, F>(parser: P, func: F) -> Map<P, F>
+where
+{
+    Map { parser, func }
 }

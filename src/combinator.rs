@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Parser, ParserError};
+use crate::{Parser, ParserError, Sequence};
 
 pub struct Map<P, F> {
     pub parser: P,
@@ -11,6 +11,16 @@ pub struct ParserMap<PType, M> {
     phantom_ptype: PhantomData<PType>,
     phantom_m: PhantomData<M>,
 }
+
+impl<'a, P, F, PType, S: ?Sized, O, M> Parser<'a, S, O, ParserMap<PType, M>> for Map<P, F> 
+where 
+    P: Parser<'a, S, M, PType>,
+    S: Sequence {
+    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<O, E> {
+        todo!()
+    }
+}
+/* 
 impl<'a, P, F, M, O, PType, I: ?Sized> Parser<'a, I, O, ParserMap<PType, M>> for Map<P, F>
 where
     P: Parser<'a, I, M, PType>,
@@ -22,7 +32,7 @@ where
             Err(err) => Err(err),
         }
     }
-}
+}*/
 
 pub struct Try<P> {
     pub parser: P,

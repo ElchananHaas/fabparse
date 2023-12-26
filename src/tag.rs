@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    ops::{Range, RangeBounds},
+    ops::RangeBounds
 };
 
 use crate::{Parser, ParserError, ParserType, Sequence};
@@ -98,7 +98,6 @@ where
     }
 }
 
-
 pub struct FnResultSeqParser;
 impl<'a, S, U, Item, FnOut, FnErr> Parser<'a, S, FnOut, FnResultSeqParser> for U
 where
@@ -113,10 +112,8 @@ where
                 Ok(out) => {
                     *input = rest;
                     Ok(out)
-                },
-                Err(err) => {
-                    Err(E::from_external_error(*input, ParserType::Tag, err))
                 }
+                Err(err) => Err(E::from_external_error(*input, ParserType::Tag, err)),
             }
         } else {
             Err(E::from_parser_error(*input, ParserType::Tag))
@@ -124,12 +121,13 @@ where
     }
 }
 
-
 pub struct RangeSeqParser;
 impl<'a, Item, S, U> Parser<'a, S, Item, RangeSeqParser> for U
-    where S: ?Sized + Sequence<Item = Item> + PartialEq,
+where
+    S: ?Sized + Sequence<Item = Item> + PartialEq,
     Item: PartialOrd,
-    U: RangeBounds<Item> {
+    U: RangeBounds<Item>,
+{
     fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<Item, E> {
         if let Some((first, rest)) = Sequence::try_split_front(input) {
             if self.contains(&first) {
@@ -145,9 +143,10 @@ impl<'a, Item, S, U> Parser<'a, S, Item, RangeSeqParser> for U
 }
 
 pub struct Take(pub usize);
-impl<'a, S> Parser<'a, S, &'a S, Take> for Take 
-    where S: ?Sized + Sequence + PartialEq,
-    {
+impl<'a, S> Parser<'a, S, &'a S, Take> for Take
+where
+    S: ?Sized + Sequence + PartialEq,
+{
     fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<&'a S, E> {
         let orig_input = *input;
         for _ in 0..self.0 {
@@ -159,7 +158,9 @@ impl<'a, S> Parser<'a, S, &'a S, Take> for Take
             }
         }
         let pos = orig_input.len() - input.len();
-        let (res, rest) = orig_input.try_split_at(pos).expect("Something went very wrong in the take parser");
+        let (res, rest) = orig_input
+            .try_split_at(pos)
+            .expect("Something went wrong in the take parser");
         *input = rest;
         Ok(res)
     }
