@@ -72,14 +72,23 @@ impl ParserError for ContextError {
 
 pub trait Parser<'a, I: ?Sized, O, ParserType> {
     fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E>;
-
+    /**
+     * This creates a Try parser that if this parser returns Result::Ok or Option::Some,
+     * unwraps the value. If this parser returns None or Err, then the Try parser will fail. 
+     * 
+     * Only use this method on parsers that return an Option or Result. 
+     * Otherwise, the returned parser won't implemented the Parser trait.
+     */
     fn parser_try(self) -> Try<Self>
     where
         Self: Sized,
     {
         Try { parser: self }
     }
-
+    /**
+     * This creates a Map parser that applies the function to the 
+     * output of this parser.
+     */
     fn parser_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut>
     where
         Self: Sized,
@@ -90,8 +99,13 @@ pub trait Parser<'a, I: ?Sized, O, ParserType> {
             phantom_i: PhantomData,
         }
     }
-
-    fn try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut>
+    /**
+     * This parser composes the behavior of the Try and Map parsers. It 
+     * first maps the input, and if the result is Option::Some or Result::Ok, 
+     * it unwraps the input. Othewise, the parser fails. 
+     * 
+     */
+    fn parser_try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut>
     where Self: Sized {
         ParserTryMap {
             parser: self,
