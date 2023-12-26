@@ -9,66 +9,6 @@ use std::{error::Error, fmt::Debug};
 
 use combinator::Map;
 
-/**
- * Trait for a sequence. This trait is implemented for slices and for str
- */
-pub trait Sequence: Debug {
-    type Item: Clone + PartialEq;
-    /**
-     * Try to split the sequence at an index. If this is out of range
-     * this function will return None. 
-     */
-    fn try_split_at<'a>(&'a self, mid: usize) -> Option<(&'a Self, &'a Self)>;
-    fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)>;
-    fn len(&self) -> usize;
-}
-
-impl<T: Debug + Clone + PartialEq> Sequence for [T] {
-    type Item = T;
-
-    fn try_split_at<'a>(&'a self, mid: usize) -> Option<(&'a Self, &'a Self)> {
-        if mid > self.len() {
-            None
-        } else {
-            Some(self.split_at(mid)) 
-        }
-    }
-
-    fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)> {
-        if seq.len() == 0 {
-            None
-        } else {
-            Some((seq[0].clone(), &seq[1..]))
-        }
-    }
-     fn len(&self) -> usize {
-         self.len()
-     }
-}
-
-impl Sequence for str {
-    type Item = char;
-
-    fn try_split_at<'a>(&'a self, mid: usize) -> Option<(&'a Self, &'a Self)> {
-        if mid > self.len() {
-            None
-        } else {
-            Some(self.split_at(mid)) 
-        }
-    }
-
-    fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)> {
-        let res = seq.chars().next();
-        res.map(|char| 
-            {
-                (char, &seq[char.len_utf8()..])
-            }
-        )
-    }
-    fn len(&self) -> usize {
-        self.len()
-    }
-}
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.

@@ -3,19 +3,28 @@ use std::{
     ops::{Range, RangeBounds},
 };
 
-use crate::{Parser, ParserError, ParserType, Sequence};
+use crate::{Parser, ParserError, ParserType};
 
+pub struct CharStrParser;
+impl<'a> Parser<'a, str, char, CharStrParser> for char {
+    fn parse<E: ParserError>(&self, input: &mut &'a str) -> Result<char, E> {
+        if (*input).starts_with(*self) {
+            let (_, rest) = input.split_at(self.len_utf8());
+            *input = rest;
+            Ok(*self)
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
 
-pub struct ItemSeqParser;
-impl<'a, Item: PartialEq, S: ?Sized + Sequence<Item = Item>> Parser<'a, S, Item, ItemSeqParser> for Item {
-    fn parse<E: ParserError>(&self, input: &mut &'a S) -> Result<Item, E> {
-        if let Some((start, rest)) = Sequence::try_split_front(input){
-            if start == *self {
-                *input = rest;
-                Ok(start)
-            } else {
-                Err(E::from_parser_error(*input, ParserType::Tag))
-            }
+pub struct ItemSliceParser;
+impl<'a, T: PartialEq + Clone> Parser<'a, [T], T, ItemSliceParser> for T {
+    fn parse<E: ParserError>(&self, input: &mut &'a [T]) -> Result<T, E> {
+        if !input.is_empty() && input[0] == *self {
+            let res = &input[0];
+            *input = &input[1..];
+            Ok(res.clone())
         } else {
             Err(E::from_parser_error(*input, ParserType::Tag))
         }
