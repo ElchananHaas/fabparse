@@ -231,3 +231,15 @@ impl<'a, T, E: ParserError> Parser<'a, [T], &'a [T], E, Take> for Take {
         }
     }
 }
+
+pub struct ParserFunction;
+
+impl<'a, I: ?Sized, O, E: ParserError> Parser<'a, I, O, E, ParserFunction> for fn(&mut &'a I) -> Result<O, E> {
+    fn parse(&self, input: &mut &'a I) -> Result<O, E> {
+        let checkpoint = *input;
+        self(input).map_err(|err| {
+            *input = checkpoint;
+            err
+        })
+    }
+}
