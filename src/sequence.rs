@@ -11,16 +11,16 @@ macro_rules! sequence_impl {
         }
 
         #[allow(unused_assignments)]
-        impl<'a, I: ?Sized, $($otype, )+ $($parser, $ptype,)+> Parser<'a, I, ($($otype,)+), $tstruct<$($ptype,)+>> for ($($parser,)+)
+        impl<'a, I: ?Sized, $($otype, )+ E: ParserError, $($parser, $ptype,)+> Parser<'a, I, ($($otype,)+), E, $tstruct<$($ptype,)+>> for ($($parser,)+)
             where $(
-                $parser: Parser<'a, I, $otype, $ptype>,
+                $parser: Parser<'a, I, $otype, E, $ptype>,
             )+{
-            fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<($($otype,)+), E> {
+            fn parse(&self, input: &mut &'a I) -> Result<($($otype,)+), E> {
                 let startloc = *input;
                 let ($($parserlower,)+) = self;
                 let ($($rval,)+);
                 $(
-                    match $parserlower.parse::<E>(input) {
+                    match $parserlower.parse(input) {
                         Ok(res) => {
                             $rval = res;
                         }

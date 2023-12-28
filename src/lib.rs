@@ -70,8 +70,8 @@ impl ParserError for ContextError {
     }
 }
 
-pub trait Parser<'a, I: ?Sized, O, ParserType> {
-    fn parse<E: ParserError>(&self, input: &mut &'a I) -> Result<O, E>;
+pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
+    fn parse(&self, input: &mut &'a I) -> Result<O, E>;
     /**
      * This creates a Try parser that if this parser returns Result::Ok or Option::Some,
      * unwraps the value. If this parser returns None or Err, then the Try parser will fail. 
@@ -89,7 +89,7 @@ pub trait Parser<'a, I: ?Sized, O, ParserType> {
      * This creates a Map parser that applies the function to the 
      * output of this parser.
      */
-    fn parser_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut>
+    fn parser_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut, E>
     where
         Self: Sized,
     {
@@ -97,6 +97,7 @@ pub trait Parser<'a, I: ?Sized, O, ParserType> {
             parser: self,
             func,
             phantom_i: PhantomData,
+            phantom_e: PhantomData
         }
     }
     /**
@@ -105,12 +106,13 @@ pub trait Parser<'a, I: ?Sized, O, ParserType> {
      * it unwraps the input. Othewise, the parser fails. 
      * 
      */
-    fn parser_try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut>
+    fn parser_try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut, E>
     where Self: Sized {
         ParserTryMap {
             parser: self,
             func,
-            phantom_i: PhantomData
+            phantom_i: PhantomData,
+            phantom_e: PhantomData
         }
     }
 }
