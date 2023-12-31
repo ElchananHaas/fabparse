@@ -422,3 +422,21 @@ fn opt_success() {
     assert_eq!(None, res.unwrap());
     assert_eq!("abc", input);
 }
+
+
+
+#[test]
+fn tuple_success() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> =("a","b").fab(&mut input);
+    assert_eq!(("a","b"), res.unwrap());
+    assert_eq!("c", input);
+}
+
+#[test]
+fn tuple_fail() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> =("b","a").fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("abc", input);
+}

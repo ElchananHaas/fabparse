@@ -159,7 +159,7 @@ pub fn take(count: usize) -> tag::Take {
 }
 
 /**
- * Makes the underlying parser optional. If the underlying parser succeeds with result out, 
+ * Makes the underlying parser optional. If the underlying parser succeeds with Ok(out), 
  * this parser returns Some(out). Otherwise, this parser succeeds with None and 
  * consumes no input.
  */
@@ -168,3 +168,4 @@ pub fn opt<T>(parser: T) -> combinator::Opt<T> {
         parser
     }
 }
+
