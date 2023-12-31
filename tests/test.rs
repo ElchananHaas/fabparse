@@ -1,6 +1,6 @@
 use std::{error::Error, fmt, str::FromStr};
 
-use fabparse::{self, take, ContextError, Parser, opt};
+use fabparse::{self, opt, take, ContextError, Parser};
 
 #[test]
 fn char_tag_parser_success() {
@@ -233,10 +233,7 @@ fn take_map_fail() {
 #[test]
 fn try_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
-        .fab_map(|_| Some(5))
-        .fab_try()
-        .fab(&mut input);
+    let res: Result<_, ContextError> = take(1).fab_map(|_| Some(5)).fab_try().fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -244,10 +241,7 @@ fn try_success() {
 #[test]
 fn try_parser_inner_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4)
-        .fab_map(|_| Some(5))
-        .fab_try()
-        .fab(&mut input);
+    let res: Result<_, ContextError> = take(4).fab_map(|_| Some(5)).fab_try().fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -255,10 +249,7 @@ fn try_parser_inner_fail() {
 #[test]
 fn try_parser_none_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
-        .fab_map(|_| None::<i32>)
-        .fab_try()
-        .fab(&mut input);
+    let res: Result<_, ContextError> = take(1).fab_map(|_| None::<i32>).fab_try().fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -330,13 +321,10 @@ fn map_trait_method_success() {
     assert_eq!("bc", input);
 }
 
-
 #[test]
 fn try_map_option_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
-        .fab_try_map(|_| Some(5))
-        .fab(&mut input);
+    let res: Result<_, ContextError> = take(1).fab_try_map(|_| Some(5)).fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -344,9 +332,7 @@ fn try_map_option_success() {
 #[test]
 fn try_map_option_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
-        .fab_try_map(|_| None::<i32>)
-        .fab(&mut input);
+    let res: Result<_, ContextError> = take(1).fab_try_map(|_| None::<i32>).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -354,9 +340,7 @@ fn try_map_option_fail() {
 #[test]
 fn try_map_option_parser_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4)
-        .fab_try_map(|_|Some(5))
-        .fab(&mut input);
+    let res: Result<_, ContextError> = take(4).fab_try_map(|_| Some(5)).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -365,7 +349,7 @@ fn try_map_option_parser_fail() {
 fn try_map_result_success() {
     let mut input = "abc";
     let res: Result<_, ContextError> = take(1)
-        .fab_try_map(|_| Ok::<_,TestError>(5))
+        .fab_try_map(|_| Ok::<_, TestError>(5))
         .fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
@@ -375,7 +359,7 @@ fn try_map_result_success() {
 fn try_map_result_fail() {
     let mut input = "abc";
     let res: Result<_, ContextError> = take(1)
-        .fab_try_map(|_| Err::<i32,_>(TestError))
+        .fab_try_map(|_| Err::<i32, _>(TestError))
         .fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
@@ -385,7 +369,7 @@ fn try_map_result_fail() {
 fn try_map_option_result_fail() {
     let mut input = "abc";
     let res: Result<_, ContextError> = take(4)
-        .fab_try_map(|_|Ok::<_,TestError>(5))
+        .fab_try_map(|_| Ok::<_, TestError>(5))
         .fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
@@ -394,11 +378,11 @@ fn try_map_option_result_fail() {
 #[test]
 fn str_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> ="a".fab(&mut input);
+    let res: Result<_, ContextError> = "a".fab(&mut input);
     assert_eq!("a", res.unwrap());
     assert_eq!("bc", input);
     let mut input = "abc";
-    let res: Result<_, ContextError> ="abc".fab(&mut input);
+    let res: Result<_, ContextError> = "abc".fab(&mut input);
     assert_eq!("abc", res.unwrap());
     assert_eq!("", input);
 }
@@ -406,7 +390,7 @@ fn str_success() {
 #[test]
 fn str_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> ="ad".fab(&mut input);
+    let res: Result<_, ContextError> = "ad".fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -423,20 +407,18 @@ fn opt_success() {
     assert_eq!("abc", input);
 }
 
-
-
 #[test]
 fn tuple_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> =("a","b").fab(&mut input);
-    assert_eq!(("a","b"), res.unwrap());
+    let res: Result<_, ContextError> = ("a", "b").fab(&mut input);
+    assert_eq!(("a", "b"), res.unwrap());
     assert_eq!("c", input);
 }
 
 #[test]
 fn tuple_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> =("b","a").fab(&mut input);
+    let res: Result<_, ContextError> = ("b", "a").fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }

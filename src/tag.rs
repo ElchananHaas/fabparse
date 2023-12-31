@@ -38,7 +38,6 @@ where
                 *input = rest;
                 Ok(start)
             } else {
-
                 Err(E::from_parser_error(*input, ParserType::Tag))
             }
         } else {
@@ -49,10 +48,10 @@ where
 
 pub struct ConstArrayParser;
 
-impl<'a, E, Item, const N:usize> Parser<'a, [Item], &'a [Item], E, ConstArrayParser> for [Item; N]
+impl<'a, E, Item, const N: usize> Parser<'a, [Item], &'a [Item], E, ConstArrayParser> for [Item; N]
 where
     E: ParserError,
-    Item: Clone + PartialEq
+    Item: Clone + PartialEq,
 {
     fn fab(&self, input: &mut &'a [Item]) -> Result<&'a [Item], E> {
         self.as_slice().fab(input)
@@ -215,32 +214,26 @@ where
 }
 
 pub struct Take(pub usize);
-impl<'a, E: ParserError> Parser<'a, str, &'a str, E, Take> for Take {
-    fn fab(&self, input: &mut &'a str) -> Result<&'a str, E> {
-        let mut char_iter = input.chars();
-        let mut pos = 0;
+impl<'a, I, E: ParserError> Parser<'a, I, &'a I, E, Take> for Take
+where
+    I: ?Sized + Sequence,
+{
+    fn fab(&self, input: &mut &'a I) -> Result<&'a I, E> {
+        let orig = *input;
+        let orig_len: usize = input.len();
         for _ in 0..self.0 {
-            if let Some(char) = char_iter.next() {
-                pos += char.len_utf8();
-            } else {
+            if let None = Sequence::try_split_front(input) {
+                *input = orig;
                 return Err(E::from_parser_error(*input, ParserType::Tag));
             }
         }
-        let (res, rest) = input.split_at(pos);
+        let pos = orig_len - input.len();
+        *input = orig;
+        let (res, rest) = input
+            .try_split_at(pos)
+            .expect("Something went wrong in the take parser");
         *input = rest;
         Ok(res)
-    }
-}
-
-impl<'a, T, E: ParserError> Parser<'a, [T], &'a [T], E, Take> for Take {
-    fn fab(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
-        if input.len() < self.0 {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            let (res, rest) = input.split_at(self.0);
-            *input = rest;
-            Ok(res)
-        }
     }
 }
 
