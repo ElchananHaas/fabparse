@@ -127,40 +127,24 @@ where
     }
 }
 
-pub struct CharRangeStrParser;
-impl<'a, E: ParserError> Parser<'a, str, char, E, CharRangeStrParser> for Range<char> {
-    fn fab(&self, input: &mut &'a str) -> Result<char, E> {
-        let first_char = input.chars().next();
-        if let Some(char) = first_char {
-            if self.contains(&char) {
-                *input = &input[char.len_utf8()..];
-                Ok(char)
-            } else {
-                Err(E::from_parser_error(*input, ParserType::Tag))
-            }
-        } else {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        }
-    }
-}
-
-pub struct RangeSliceParser;
-impl<'a, T, U, E: ParserError> Parser<'a, [T], T, E, RangeSliceParser> for U
+pub struct RangeSeqParser;
+impl<'a, Item, I, E, R> Parser<'a, I, Item, E, RangeSeqParser> for R
 where
-    T: PartialOrd + Clone,
-    U: RangeBounds<T>,
+    I: ?Sized + Sequence<Item = Item>,
+    E: ParserError,
+    R: RangeBounds<Item>,
+    Item: PartialOrd
 {
-    fn fab(&self, input: &mut &'a [T]) -> Result<T, E> {
-        if input.is_empty() {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            if self.contains(&input[0]) {
-                let res = input[0].clone();
-                *input = &input[1..];
-                Ok(res)
+    fn fab(&self, input: &mut &'a I) -> Result<Item, E> {
+        if let Some((start, rest)) = input.try_split_front() {
+            if self.contains(&start) {
+                *input = rest;
+                Ok(start)
             } else {
                 Err(E::from_parser_error(*input, ParserType::Tag))
             }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
         }
     }
 }
