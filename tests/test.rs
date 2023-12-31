@@ -422,3 +422,19 @@ fn tuple_fail() {
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
+
+#[test]
+fn range_success() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> = ('a'..='z').fab(&mut input);
+    assert_eq!('a', res.unwrap());
+    assert_eq!("bc", input);
+}
+
+#[test]
+fn range_fail() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> = ('b'..='z').fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("abc", input);
+}
