@@ -74,7 +74,8 @@ impl ParserError for ContextError {
 pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     /**
      * Parses the input. This method advances the input reference to any remaining
-     * unparsed input.
+     * unparsed input. The method is named "fab" instead of "parse" to avoid conflicts 
+     * with the "parse" method of &str.
      */
     fn fab(&self, input: &mut &'a I) -> Result<O, E>;
     /**
