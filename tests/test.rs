@@ -1,7 +1,7 @@
 use std::{error::Error, fmt, str::FromStr};
 
 use fabparse::{self, opt, take, ContextError, Parser};
-
+use fabparse::tag::FnBoolSeqParser;
 #[test]
 fn char_tag_parser_success() {
     let mut input = "abc";

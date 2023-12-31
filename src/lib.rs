@@ -3,7 +3,7 @@
 mod branch;
 mod combinator;
 mod sequence;
-mod tag;
+pub mod tag;
 
 use std::{error::Error, fmt::Debug, marker::PhantomData};
 

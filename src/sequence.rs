@@ -11,12 +11,16 @@ pub trait Sequence {
     /**
      * Try to split off the first element of a sequence.
      */
-    fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)>;
+    fn try_split_front<'a>(&'a self) -> Option<(Self::Item, &'a Self)>;
     /**
      * Gets the length of a sequence. This will be in bytes for &str,
      * and number of elements for [T]
      */
     fn len(&self) -> usize;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl<T: Clone> Sequence for [T] {
@@ -30,11 +34,11 @@ impl<T: Clone> Sequence for [T] {
         }
     }
 
-    fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)> {
-        if seq.len() == 0 {
+    fn try_split_front<'a>(&'a self) -> Option<(Self::Item, &'a Self)> {
+        if self.len() == 0 {
             None
         } else {
-            Some((seq[0].clone(), &seq[1..]))
+            Some((self[0].clone(), &self[1..]))
         }
     }
     fn len(&self) -> usize {
@@ -53,9 +57,9 @@ impl Sequence for str {
         }
     }
 
-    fn try_split_front<'a>(seq: &mut &'a Self) -> Option<(Self::Item, &'a Self)> {
-        let res = seq.chars().next();
-        res.map(|char| (char, &seq[char.len_utf8()..]))
+    fn try_split_front<'a>(&'a self) -> Option<(Self::Item, &'a Self)> {
+        let res = self.chars().next();
+        res.map(|char| (char, &self[char.len_utf8()..]))
     }
     fn len(&self) -> usize {
         self.len()
