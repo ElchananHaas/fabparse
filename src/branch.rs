@@ -18,13 +18,13 @@ macro_rules! alt_impl {
             where $(
                 $parser: Parser<'a, I, O, E, $ptype>,
             )+{
-            fn parse(&self, input: &mut &'a I) -> Result<O, E> {
+            fn fab(&self, input: &mut &'a I) -> Result<O, E> {
                 let startloc = *input;
                 let mut maxloc = None;
                 let mut maxlocerr = None;
                 let  ($($parserlower,)+) = &self.0;
                 $(
-                    match $parserlower.parse(input) {
+                    match $parserlower.fab(input) {
                         Ok(res) => {
                             return Ok(res);
                         }
@@ -76,7 +76,7 @@ macro_rules! permutation_impl {
             where $(
                 $parser: Parser<'a, I, $otype, E, $ptype>,
             )+{
-            fn parse(&self, input: &mut &'a I) -> Result<($($otype,)+), E> {
+            fn fab(&self, input: &mut &'a I) -> Result<($($otype,)+), E> {
                 let outer_startloc = *input;
                 let ($($parserlower,)+) = &self.0;
                 $(
@@ -90,7 +90,7 @@ macro_rules! permutation_impl {
                     $(
                         if ($rval.is_none()) {
                             done = false;
-                            match $parserlower.parse(input) {
+                            match $parserlower.fab(input) {
                                 Ok(res) => {
                                     $rval = Some(res);
                                     continue;

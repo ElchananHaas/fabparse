@@ -7,7 +7,7 @@ mod tag;
 
 use std::{error::Error, fmt::Debug, marker::PhantomData};
 
-use combinator::{ParserMap, Try, ParserTryMap};
+use combinator::{ParserMap, Try, ParserTryMap, Opt};
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -38,6 +38,7 @@ pub enum ParserType {
     Alt,
     Try,
     TryMap,
+    CustomFn
 }
 #[derive(Debug)]
 pub struct ContextError {
@@ -71,15 +72,19 @@ impl ParserError for ContextError {
 }
 
 pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
-    fn parse(&self, input: &mut &'a I) -> Result<O, E>;
     /**
-     * This creates a Try parser that if this parser returns Result::Ok or Option::Some,
-     * unwraps the value. If this parser returns None or Err, then the Try parser will fail. 
+     * Parses the input. This method advances the input reference to any remaining
+     * unparsed input.
+     */
+    fn fab(&self, input: &mut &'a I) -> Result<O, E>;
+    /**
+     * This creates a Try parser that if the underlying parser returns Result::Ok or Option::Some,
+     * unwraps the value. If it returns None or Err, then the Try parser will fail. 
      * 
      * Only use this method on parsers that return an Option or Result. 
      * Otherwise, the returned parser won't implemented the Parser trait.
      */
-    fn parser_try(self) -> Try<Self>
+    fn fab_try(self) -> Try<Self>
     where
         Self: Sized,
     {
@@ -87,9 +92,9 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     }
     /**
      * This creates a Map parser that applies the function to the 
-     * output of this parser.
+     * output of the underlying parser.
      */
-    fn parser_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut, E>
+    fn fab_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut, E>
     where
         Self: Sized,
     {
@@ -106,7 +111,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
      * it unwraps the input. Othewise, the parser fails. 
      * 
      */
-    fn parser_try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut, E>
+    fn fab_try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut, E>
     where Self: Sized {
         ParserTryMap {
             parser: self,
@@ -133,23 +138,32 @@ pub fn alt<T>(parsers: T) -> branch::Alt<T> {
 }
 
 /**
- * This function takes in a tuple of 1 to 11 parsers. Returns a parser that
+ * This function takes in a tuple of 1 to 11 parsers. It returns a parser that
  * succeeds when all of the input parsers have succeeded in any order.
  * Returns a tuple of outputs from the parsers in the same order
  * that they were provided in the input.
  *
  * The parsers will be tried in the order that they are provided in the input.
- * Its runtime is O(N^2) in the number of parsers. For parsing a permutation
- * of more than 11 parsers, consider using a hashmap instead of this combinator.
  */
 pub fn permutation<T>(parsers: T) -> branch::Permutation<T> {
     branch::Permutation(parsers)
 }
 
 /**
- * Cunstructs a parser that takes that many items. For strings, this
+ * Constructs a parser that takes that many items. For strings, this
  * will be characters and for arrays it will be elements.
  */
 pub fn take(count: usize) -> tag::Take {
     tag::Take(count)
+}
+
+/**
+ * Makes the underlying parser optional. If the underlying parser succeeds with result out, 
+ * this parser returns Some(out). Otherwise, this parser succeeds with None and 
+ * consumes no input.
+ */
+pub fn opt<T>(parser: T) -> combinator::Opt<T> {
+    Opt {
+        parser
+    }
 }

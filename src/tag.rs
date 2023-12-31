@@ -7,7 +7,7 @@ use crate::{Parser, ParserError, ParserType};
 
 pub struct CharStrParser;
 impl<'a, E: ParserError> Parser<'a, str, char, E, CharStrParser> for char {
-    fn parse(&self, input: &mut &'a str) -> Result<char, E> {
+    fn fab(&self, input: &mut &'a str) -> Result<char, E> {
         if (*input).starts_with(*self) {
             let (_, rest) = input.split_at(self.len_utf8());
             *input = rest;
@@ -20,11 +20,24 @@ impl<'a, E: ParserError> Parser<'a, str, char, E, CharStrParser> for char {
 
 pub struct ItemSliceParser;
 impl<'a, T: PartialEq + Clone, E: ParserError> Parser<'a, [T], T, E, ItemSliceParser> for T {
-    fn parse(&self, input: &mut &'a [T]) -> Result<T, E> {
+    fn fab(&self, input: &mut &'a [T]) -> Result<T, E> {
         if !input.is_empty() && input[0] == *self {
             let res = &input[0];
             *input = &input[1..];
             Ok(res.clone())
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
+pub struct StrStrParser;
+impl<'a, E: ParserError> Parser<'a, str, &'a str, E, StrStrParser> for &'a str {
+    fn fab(&self, input: &mut &'a str) -> Result<&'a str, E> {
+        if (*input).starts_with(self) {
+            let (start, rest) = input.split_at(self.len());
+            *input = rest;
+            Ok(start)
         } else {
             Err(E::from_parser_error(*input, ParserType::Tag))
         }
@@ -36,7 +49,7 @@ impl<'a, T: PartialEq, U, E: ParserError> Parser<'a, [T], &'a [T], E, SliceSlice
 where
     U: AsRef<[T]>,
 {
-    fn parse(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
+    fn fab(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
         let tag: &[T] = self.as_ref();
         if input.len() < tag.len() {
             Err(E::from_parser_error(*input, ParserType::Tag))
@@ -54,7 +67,7 @@ where
 
 pub struct FnBoolSliceParser;
 impl<'a, T: Clone + 'a, U: Fn(T) -> bool, E: ParserError> Parser<'a, [T], T, E, FnBoolSliceParser> for U {
-    fn parse(&self, input: &mut &'a [T]) -> Result<T, E> {
+    fn fab(&self, input: &mut &'a [T]) -> Result<T, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -71,7 +84,7 @@ impl<'a, T: Clone + 'a, U: Fn(T) -> bool, E: ParserError> Parser<'a, [T], T, E, 
 
 pub struct FnBoolStrParser;
 impl<'a, U: Fn(char) -> bool, E: ParserError> Parser<'a, str, char, E, FnBoolStrParser> for U {
-    fn parse(&self, input: &mut &'a str) -> Result<char, E> {
+    fn fab(&self, input: &mut &'a str) -> Result<char, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             if self(char) {
@@ -89,7 +102,7 @@ impl<'a, U: Fn(char) -> bool, E: ParserError> Parser<'a, str, char, E, FnBoolStr
 pub struct FnOptionSliceParser;
 impl<'a, T: Clone + 'a, V, U, E: ParserError> Parser<'a, [T], V, E, FnOptionSliceParser> for U 
     where U: Fn(T) -> Option<V> {
-    fn parse(&self, input: &mut &'a [T]) -> Result<V, E> {
+    fn fab(&self, input: &mut &'a [T]) -> Result<V, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -106,7 +119,7 @@ impl<'a, T: Clone + 'a, V, U, E: ParserError> Parser<'a, [T], V, E, FnOptionSlic
 pub struct FnOptionStrParser;
 impl<'a, V, U, E: ParserError> Parser<'a, str, V, E, FnOptionStrParser> for U
     where U: Fn(char) -> Option<V> {
-    fn parse(&self, input: &mut &'a str) -> Result<V, E> {
+    fn fab(&self, input: &mut &'a str) -> Result<V, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             if let Some(res) = self(char) {
@@ -127,7 +140,7 @@ where
     U: Fn(T) -> Result<V, FErr>,
     FErr: Error + Send + Sync + 'static,
 {
-    fn parse(&self, input: &mut &'a [T]) -> Result<V, E> {
+    fn fab(&self, input: &mut &'a [T]) -> Result<V, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -148,7 +161,7 @@ where
     U: Fn(char) -> Result<V, FErr>,
     FErr: Error + Send + Sync + 'static,
 {
-    fn parse(&self, input: &mut &'a str) -> Result<V, E> {
+    fn fab(&self, input: &mut &'a str) -> Result<V, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             match self(char) {
@@ -166,7 +179,7 @@ where
 
 pub struct CharRangeStrParser;
 impl<'a, E: ParserError> Parser<'a, str, char, E, CharRangeStrParser> for Range<char> {
-    fn parse(&self, input: &mut &'a str) -> Result<char, E> {
+    fn fab(&self, input: &mut &'a str) -> Result<char, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
             if self.contains(&char) {
@@ -187,7 +200,7 @@ where
     T: PartialOrd + Clone,
     U: RangeBounds<T>,
 {
-    fn parse(&self, input: &mut &'a [T]) -> Result<T, E> {
+    fn fab(&self, input: &mut &'a [T]) -> Result<T, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -204,7 +217,7 @@ where
 
 pub struct Take(pub usize);
 impl<'a, E: ParserError> Parser<'a, str, &'a str, E, Take> for Take {
-    fn parse(&self, input: &mut &'a str) -> Result<&'a str, E> {
+    fn fab(&self, input: &mut &'a str) -> Result<&'a str, E> {
         let mut char_iter = input.chars();
         let mut pos = 0;
         for _ in 0..self.0 {
@@ -221,7 +234,7 @@ impl<'a, E: ParserError> Parser<'a, str, &'a str, E, Take> for Take {
 }
 
 impl<'a, T, E: ParserError> Parser<'a, [T], &'a [T], E, Take> for Take {
-    fn parse(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
+    fn fab(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
         if input.len() < self.0 {
             Err(E::from_parser_error(*input, ParserType::Tag))
         } else {
@@ -235,7 +248,7 @@ impl<'a, T, E: ParserError> Parser<'a, [T], &'a [T], E, Take> for Take {
 pub struct ParserFunction;
 
 impl<'a, I: ?Sized, O, E: ParserError> Parser<'a, I, O, E, ParserFunction> for fn(&mut &'a I) -> Result<O, E> {
-    fn parse(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
         self(input).map_err(|err| {
             *input = checkpoint;

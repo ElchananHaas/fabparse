@@ -15,12 +15,12 @@ macro_rules! sequence_impl {
             where $(
                 $parser: Parser<'a, I, $otype, E, $ptype>,
             )+{
-            fn parse(&self, input: &mut &'a I) -> Result<($($otype,)+), E> {
+            fn fab(&self, input: &mut &'a I) -> Result<($($otype,)+), E> {
                 let startloc = *input;
                 let ($($parserlower,)+) = self;
                 let ($($rval,)+);
                 $(
-                    match $parserlower.parse(input) {
+                    match $parserlower.fab(input) {
                         Ok(res) => {
                             $rval = res;
                         }

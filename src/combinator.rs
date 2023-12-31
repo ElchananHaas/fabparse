@@ -17,8 +17,8 @@ impl<'a, P, M, I: ?Sized, O, E: ParserError, PType> Parser<'a, I, O, E, ParserMa
 where
     P: Parser<'a, I, M, E, PType>,
 {
-    fn parse(&self, input: &mut &'a I) -> Result<O, E> {
-        match self.parser.parse(input) {
+    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
+        match self.parser.fab(input) {
             Ok(res) => Ok((self.func)(res)),
             Err(err) => Err(err),
         }
@@ -37,9 +37,9 @@ impl<'a, I: ?Sized, O, E: ParserError, P, PType> Parser<'a, I, O, E, TryParser<P
 where
     P: Parser<'a, I, Option<O>, E, PType>,
 {
-    fn parse(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
-        let parsed = self.parser.parse(input)?;
+        let parsed = self.parser.fab(input)?;
         parsed.ok_or_else(|| {
             *input = checkpoint;
             E::from_parser_error(*input, ParserType::Try)
@@ -56,9 +56,9 @@ where
     P: Parser<'a, I, Result<O, Err>, E, PType>,
     Err: Error + Send + Sync + 'static,
 {
-    fn parse(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
-        let parsed = self.parser.parse(input)?;
+        let parsed = self.parser.fab(input)?;
         parsed.map_err(|err| {
             *input = checkpoint;
             E::from_external_error(*input, ParserType::Try, err)
@@ -82,9 +82,9 @@ impl<'a, P, M, I: ?Sized, O, E: ParserError, PType> Parser<'a, I, O, E, ParserMa
 where
     P: Parser<'a, I, M, E, PType>,
 {
-    fn parse<>(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab<>(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
-        match self.parser.parse(input) {
+        match self.parser.fab(input) {
             Ok(res) => {
                 let func_result = (self.func)(res);
                 func_result.ok_or_else(|| {
@@ -104,9 +104,9 @@ where
     P: Parser<'a, I, M, E, PType>,
     Err: Error + Send + Sync + 'static,
 {
-    fn parse<>(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab<>(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
-        match self.parser.parse(input) {
+        match self.parser.fab(input) {
             Ok(res) => {
                 let func_result = (self.func)(res);
                 func_result.map_err(|err| {
@@ -115,6 +115,21 @@ where
                 })
             }
             Err(err) => Err(err),
+        }
+    }
+}
+
+pub struct Opt<P> {
+    pub parser: P,
+}
+
+impl<'a, I: ?Sized, O, E:ParserError, ParserType, P> Parser<'a, I, Option<O>, E, Opt<ParserType>> for Opt<P>
+ where P: Parser<'a, I, O, E, ParserType>
+{
+    fn fab(&self, input: &mut &'a I) -> Result<Option<O>, E> {
+        match self.parser.fab(input) {
+            Ok(out) => Ok(Some(out)),
+            Err(_) => Ok(None)
         }
     }
 }
