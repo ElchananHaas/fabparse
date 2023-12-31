@@ -6,14 +6,15 @@ pub struct ParserMap<P, I: ?Sized, M, O, E> {
     pub parser: P,
     pub func: fn(M) -> O,
     pub phantom_i: PhantomData<I>,
-    pub phantom_e: PhantomData<E>
+    pub phantom_e: PhantomData<E>,
 }
 
 pub struct ParserMapT<PType, M> {
     phantom_ptype: PhantomData<PType>,
     phantom_m: PhantomData<M>,
 }
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType> Parser<'a, I, O, E, ParserMapT<PType, M>> for ParserMap<P, I, M, O, E>
+impl<'a, P, M, I: ?Sized, O, E: ParserError, PType> Parser<'a, I, O, E, ParserMapT<PType, M>>
+    for ParserMap<P, I, M, O, E>
 where
     P: Parser<'a, I, M, E, PType>,
 {
@@ -51,7 +52,8 @@ pub struct TryResultParser<T, Err> {
     t: PhantomData<T>,
     err: PhantomData<Err>,
 }
-impl<'a, I: ?Sized, O, E: ParserError, P, PType, Err> Parser<'a, I, O, E, TryResultParser<PType, Err>> for Try<P>
+impl<'a, I: ?Sized, O, E: ParserError, P, PType, Err>
+    Parser<'a, I, O, E, TryResultParser<PType, Err>> for Try<P>
 where
     P: Parser<'a, I, Result<O, Err>, E, PType>,
     Err: Error + Send + Sync + 'static,
@@ -70,7 +72,7 @@ pub struct ParserTryMap<P, I: ?Sized, M, O, E> {
     pub parser: P,
     pub func: fn(M) -> O,
     pub phantom_i: PhantomData<I>,
-    pub phantom_e: PhantomData<E>
+    pub phantom_e: PhantomData<E>,
 }
 
 pub struct ParserMapOptionT<PType, M> {
@@ -82,7 +84,7 @@ impl<'a, P, M, I: ?Sized, O, E: ParserError, PType> Parser<'a, I, O, E, ParserMa
 where
     P: Parser<'a, I, M, E, PType>,
 {
-    fn fab<>(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
         match self.parser.fab(input) {
             Ok(res) => {
@@ -97,14 +99,13 @@ where
     }
 }
 
-
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, Err> Parser<'a, I, O, E, ParserMapOptionT<PType, M>>
-    for ParserTryMap<P, I, M, Result<O, Err>, E>
+impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, Err>
+    Parser<'a, I, O, E, ParserMapOptionT<PType, M>> for ParserTryMap<P, I, M, Result<O, Err>, E>
 where
     P: Parser<'a, I, M, E, PType>,
     Err: Error + Send + Sync + 'static,
 {
-    fn fab<>(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
         match self.parser.fab(input) {
             Ok(res) => {
@@ -123,13 +124,15 @@ pub struct Opt<P> {
     pub parser: P,
 }
 
-impl<'a, I: ?Sized, O, E:ParserError, ParserType, P> Parser<'a, I, Option<O>, E, Opt<ParserType>> for Opt<P>
- where P: Parser<'a, I, O, E, ParserType>
+impl<'a, I: ?Sized, O, E: ParserError, ParserType, P> Parser<'a, I, Option<O>, E, Opt<ParserType>>
+    for Opt<P>
+where
+    P: Parser<'a, I, O, E, ParserType>,
 {
     fn fab(&self, input: &mut &'a I) -> Result<Option<O>, E> {
         match self.parser.fab(input) {
             Ok(out) => Ok(Some(out)),
-            Err(_) => Ok(None)
+            Err(_) => Ok(None),
         }
     }
 }

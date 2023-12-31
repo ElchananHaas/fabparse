@@ -138,7 +138,6 @@ permutation_impl!(SeqAlt9 P1 p1 r1 O1 T1 P2 p2 r2 O2 T2 P3 p3 r3 O3 T3 P4 p4 r4 
 permutation_impl!(SeqAlt10 P1 p1 r1 O1 T1 P2 p2 r2 O2 T2 P3 p3 r3 O3 T3 P4 p4 r4 O4 T4 P5 p5 r5 O5 T5 P6 p6 r6 O6 T6 P7 p7 r7 O7 T7 P8 p8 r8 O8 T8 P9 p9 r9 O9 T9 P10 p10 r10 O10 T10);
 permutation_impl!(SeqAlt11 P1 p1 r1 O1 T1 P2 p2 r2 O2 T2 P3 p3 r3 O3 T3 P4 p4 r4 O4 T4 P5 p5 r5 O5 T5 P6 p6 r6 O6 T6 P7 p7 r7 O7 T7 P8 p8 r8 O8 T8 P9 p9 r9 O9 T9 P10 p10 r10 O10 T10 P11 p11 r11 O11 T11);
 
-
 macro_rules! sequence_impl {
     ( $tstruct:ident $( $parser:ident $parserlower:ident $rval:ident $otype:ident $ptype:ident)+ ) => {
         pub struct $tstruct<$($ptype,)+> {

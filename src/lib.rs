@@ -7,7 +7,7 @@ mod tag;
 
 use std::{error::Error, fmt::Debug, marker::PhantomData};
 
-use combinator::{ParserMap, Try, ParserTryMap, Opt};
+use combinator::{Opt, ParserMap, ParserTryMap, Try};
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -38,7 +38,7 @@ pub enum ParserType {
     Alt,
     Try,
     TryMap,
-    CustomFn
+    CustomFn,
 }
 #[derive(Debug)]
 pub struct ContextError {
@@ -74,15 +74,15 @@ impl ParserError for ContextError {
 pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     /**
      * Parses the input. This method advances the input reference to any remaining
-     * unparsed input. The method is named "fab" instead of "parse" to avoid conflicts 
+     * unparsed input. The method is named "fab" instead of "parse" to avoid conflicts
      * with the "parse" method of &str.
      */
     fn fab(&self, input: &mut &'a I) -> Result<O, E>;
     /**
      * This creates a Try parser that if the underlying parser returns Result::Ok or Option::Some,
-     * unwraps the value. If it returns None or Err, then the Try parser will fail. 
-     * 
-     * Only use this method on parsers that return an Option or Result. 
+     * unwraps the value. If it returns None or Err, then the Try parser will fail.
+     *
+     * Only use this method on parsers that return an Option or Result.
      * Otherwise, the returned parser won't implemented the Parser trait.
      */
     fn fab_try(self) -> Try<Self>
@@ -92,7 +92,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
         Try { parser: self }
     }
     /**
-     * This creates a Map parser that applies the function to the 
+     * This creates a Map parser that applies the function to the
      * output of the underlying parser.
      */
     fn fab_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut, E>
@@ -103,22 +103,24 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
             parser: self,
             func,
             phantom_i: PhantomData,
-            phantom_e: PhantomData
+            phantom_e: PhantomData,
         }
     }
     /**
-     * This parser composes the behavior of the Try and Map parsers. It 
-     * first maps the input, and if the result is Option::Some or Result::Ok, 
-     * it unwraps the input. Othewise, the parser fails. 
-     * 
+     * This parser composes the behavior of the Try and Map parsers. It
+     * first maps the input, and if the result is Option::Some or Result::Ok,
+     * it unwraps the input. Othewise, the parser fails.
+     *
      */
     fn fab_try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut, E>
-    where Self: Sized {
+    where
+        Self: Sized,
+    {
         ParserTryMap {
             parser: self,
             func,
             phantom_i: PhantomData,
-            phantom_e: PhantomData
+            phantom_e: PhantomData,
         }
     }
 }
@@ -159,13 +161,10 @@ pub fn take(count: usize) -> tag::Take {
 }
 
 /**
- * Makes the underlying parser optional. If the underlying parser succeeds with Ok(out), 
- * this parser returns Some(out). Otherwise, this parser succeeds with None and 
+ * Makes the underlying parser optional. If the underlying parser succeeds with Ok(out),
+ * this parser returns Some(out). Otherwise, this parser succeeds with None and
  * consumes no input.
  */
 pub fn opt<T>(parser: T) -> combinator::Opt<T> {
-    Opt {
-        parser
-    }
+    Opt { parser }
 }
-

@@ -3,70 +3,65 @@ use std::{
     ops::{Range, RangeBounds},
 };
 
-use crate::{Parser, ParserError, ParserType};
+use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 
-pub struct CharStrParser;
-impl<'a, E: ParserError> Parser<'a, str, char, E, CharStrParser> for char {
-    fn fab(&self, input: &mut &'a str) -> Result<char, E> {
-        if (*input).starts_with(*self) {
-            let (_, rest) = input.split_at(self.len_utf8());
-            *input = rest;
-            Ok(*self)
-        } else {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        }
-    }
-}
-
-pub struct ItemSliceParser;
-impl<'a, T: PartialEq + Clone, E: ParserError> Parser<'a, [T], T, E, ItemSliceParser> for T {
-    fn fab(&self, input: &mut &'a [T]) -> Result<T, E> {
-        if !input.is_empty() && input[0] == *self {
-            let res = &input[0];
-            *input = &input[1..];
-            Ok(res.clone())
-        } else {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        }
-    }
-}
-
-pub struct StrStrParser;
-impl<'a, E: ParserError> Parser<'a, str, &'a str, E, StrStrParser> for &'a str {
-    fn fab(&self, input: &mut &'a str) -> Result<&'a str, E> {
-        if (*input).starts_with(self) {
-            let (start, rest) = input.split_at(self.len());
-            *input = rest;
-            Ok(start)
-        } else {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        }
-    }
-}
-
-pub struct SliceSliceParser;
-impl<'a, T: PartialEq, U, E: ParserError> Parser<'a, [T], &'a [T], E, SliceSliceParser> for U
+pub struct ItemSeqParser;
+impl<'a, Item: PartialEq, I, E> Parser<'a, I, Item, E, ItemSeqParser> for Item
 where
-    U: AsRef<[T]>,
+    I: ?Sized + Sequence<Item = Item>,
+    E: ParserError,
 {
-    fn fab(&self, input: &mut &'a [T]) -> Result<&'a [T], E> {
-        let tag: &[T] = self.as_ref();
-        if input.len() < tag.len() {
-            Err(E::from_parser_error(*input, ParserType::Tag))
-        } else {
-            let (res, rest) = input.split_at(tag.len());
-            if res == tag {
+    fn fab(&self, input: &mut &'a I) -> Result<Item, E> {
+        if let Some((start, rest)) = Sequence::try_split_front(input) {
+            if start == *self {
                 *input = rest;
-                Ok(res)
+                Ok(start)
             } else {
                 Err(E::from_parser_error(*input, ParserType::Tag))
             }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
         }
     }
 }
 
+pub struct SeqSeqParser;
+
+impl<'a, I, E> Parser<'a, I, &'a I, E, SeqSeqParser> for &I
+where
+    I: ?Sized + Sequence + PartialEq,
+    E: ParserError,
+{
+    fn fab(&self, input: &mut &'a I) -> Result<&'a I, E> {
+        if let Some((start, rest)) = input.try_split_at(self.len()) {
+            if start == *self {
+                *input = rest;
+                Ok(start)
+            } else {
+
+                Err(E::from_parser_error(*input, ParserType::Tag))
+            }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
+pub struct ConstArrayParser;
+
+impl<'a, E, Item, const N:usize> Parser<'a, [Item], &'a [Item], E, ConstArrayParser> for [Item; N]
+where
+    E: ParserError,
+    Item: Clone + PartialEq
+{
+    fn fab(&self, input: &mut &'a [Item]) -> Result<&'a [Item], E> {
+        self.as_slice().fab(input)
+    }
+}
 pub struct FnBoolSliceParser;
-impl<'a, T: Clone + 'a, U: Fn(T) -> bool, E: ParserError> Parser<'a, [T], T, E, FnBoolSliceParser> for U {
+impl<'a, T: Clone + 'a, U: Fn(T) -> bool, E: ParserError> Parser<'a, [T], T, E, FnBoolSliceParser>
+    for U
+{
     fn fab(&self, input: &mut &'a [T]) -> Result<T, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
@@ -100,8 +95,10 @@ impl<'a, U: Fn(char) -> bool, E: ParserError> Parser<'a, str, char, E, FnBoolStr
 }
 
 pub struct FnOptionSliceParser;
-impl<'a, T: Clone + 'a, V, U, E: ParserError> Parser<'a, [T], V, E, FnOptionSliceParser> for U 
-    where U: Fn(T) -> Option<V> {
+impl<'a, T: Clone + 'a, V, U, E: ParserError> Parser<'a, [T], V, E, FnOptionSliceParser> for U
+where
+    U: Fn(T) -> Option<V>,
+{
     fn fab(&self, input: &mut &'a [T]) -> Result<V, E> {
         if input.is_empty() {
             Err(E::from_parser_error(*input, ParserType::Tag))
@@ -118,7 +115,9 @@ impl<'a, T: Clone + 'a, V, U, E: ParserError> Parser<'a, [T], V, E, FnOptionSlic
 
 pub struct FnOptionStrParser;
 impl<'a, V, U, E: ParserError> Parser<'a, str, V, E, FnOptionStrParser> for U
-    where U: Fn(char) -> Option<V> {
+where
+    U: Fn(char) -> Option<V>,
+{
     fn fab(&self, input: &mut &'a str) -> Result<V, E> {
         let first_char = input.chars().next();
         if let Some(char) = first_char {
@@ -247,7 +246,9 @@ impl<'a, T, E: ParserError> Parser<'a, [T], &'a [T], E, Take> for Take {
 
 pub struct ParserFunction;
 
-impl<'a, I: ?Sized, O, E: ParserError> Parser<'a, I, O, E, ParserFunction> for fn(&mut &'a I) -> Result<O, E> {
+impl<'a, I: ?Sized, O, E: ParserError> Parser<'a, I, O, E, ParserFunction>
+    for fn(&mut &'a I) -> Result<O, E>
+{
     fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
         self(input).map_err(|err| {
