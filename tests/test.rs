@@ -1,7 +1,6 @@
 use std::{error::Error, fmt, str::FromStr};
 
-use fabparse::{self, opt, take, ContextError, Parser};
-use fabparse::tag::FnBoolSeqParser;
+use fabparse::{self, opt, take, ContextError, Parser, take_not};
 #[test]
 fn char_tag_parser_success() {
     let mut input = "abc";
@@ -437,4 +436,28 @@ fn range_fail() {
     let res: Result<_, ContextError> = ('b'..='z').fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
+}
+
+#[test]
+fn take_not_success() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> = take_not("b").fab(&mut input);
+    assert_eq!('a', res.unwrap());
+    assert_eq!("bc", input);
+}
+
+#[test]
+fn take_not_fail() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> = take_not("a").fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("abc", input);
+}
+
+#[test]
+fn take_not_empty() {
+    let mut input = "";
+    let res: Result<_, ContextError> = take_not("a").fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("", input);
 }

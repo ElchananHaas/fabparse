@@ -1,6 +1,6 @@
 use std::{error::Error, marker::PhantomData};
 
-use crate::{Parser, ParserError, ParserType};
+use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 
 pub struct ParserMap<P, I: ?Sized, M, O, E> {
     pub parser: P,
@@ -133,6 +133,41 @@ where
         match self.parser.fab(input) {
             Ok(out) => Ok(Some(out)),
             Err(_) => Ok(None),
+        }
+    }
+}
+
+pub struct TakeNot<P> {
+    pub parser: P,
+}
+
+pub struct TakeNotParser<P, O> {
+    pub parser: PhantomData<P>,
+    pub out: PhantomData<O>,
+}
+impl<'a, I, O, E: ParserError, ParType, P, Item> Parser<'a, I, Item, E, TakeNotParser<ParType, O>>
+    for TakeNot<P>
+where
+    P: Parser<'a, I, O, E, ParType>,
+    I: ?Sized + Sequence<Item = Item>,
+{
+    fn fab(&self, input: &mut &'a I) -> Result<Item, E> {
+        let checkpoint = *input;
+        match self.parser.fab(input) {
+            Ok(_) => {
+                *input = checkpoint;
+                Err(E::from_parser_error(*input, ParserType::TakeNot))
+            }
+            Err(_) => {
+                *input = checkpoint;
+                match input.try_split_front() {
+                    Some((first, rest)) => {
+                        *input = rest;
+                        Ok(first)
+                    }
+                    None => Err(E::from_parser_error(*input, ParserType::TakeNot)),
+                }
+            }
         }
     }
 }

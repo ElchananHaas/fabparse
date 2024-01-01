@@ -63,7 +63,7 @@ where
     I: ?Sized + Sequence<Item = Item>,
     F: Fn(Item) -> bool,
     E: ParserError,
-    Item: Clone
+    Item: Clone,
 {
     fn fab(&self, input: &mut &'a I) -> Result<Item, E> {
         if let Some((first, rest)) = input.try_split_front() {
@@ -85,7 +85,7 @@ where
     I: ?Sized + Sequence<Item = Item>,
     F: Fn(Item) -> Option<FnOut>,
     E: ParserError,
-    Item: Clone
+    Item: Clone,
 {
     fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
         if let Some((first, rest)) = input.try_split_front() {
@@ -108,18 +108,16 @@ where
     F: Fn(Item) -> Result<FnOut, FnErr>,
     E: ParserError,
     Item: Clone,
-    FnErr: 'static + Error + Send + Sync
+    FnErr: 'static + Error + Send + Sync,
 {
     fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
         if let Some((first, rest)) = input.try_split_front() {
             match self(first.clone()) {
-                Ok(out) => { 
+                Ok(out) => {
                     *input = rest;
                     Ok(out)
                 }
-                Err(err) => {
-                    Err(E::from_external_error(*input, ParserType::Tag, err))
-                }
+                Err(err) => Err(E::from_external_error(*input, ParserType::Tag, err)),
             }
         } else {
             Err(E::from_parser_error(*input, ParserType::Tag))
@@ -133,7 +131,7 @@ where
     I: ?Sized + Sequence<Item = Item>,
     E: ParserError,
     R: RangeBounds<Item>,
-    Item: PartialOrd
+    Item: PartialOrd,
 {
     fn fab(&self, input: &mut &'a I) -> Result<Item, E> {
         if let Some((start, rest)) = input.try_split_front() {
@@ -158,7 +156,7 @@ where
         let orig = *input;
         let orig_len: usize = input.len();
         for _ in 0..self.0 {
-            if let Some((first, rest)) = input.try_split_front() {
+            if let Some((_, rest)) = input.try_split_front() {
                 *input = rest;
             } else {
                 *input = orig;

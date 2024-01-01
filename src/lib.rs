@@ -3,11 +3,11 @@
 mod branch;
 mod combinator;
 mod sequence;
-pub mod tag;
+mod tag;
 
 use std::{error::Error, fmt::Debug, marker::PhantomData};
 
-use combinator::{Opt, ParserMap, ParserTryMap, Try};
+use combinator::{Opt, ParserMap, ParserTryMap, Try, TakeNot};
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -39,6 +39,7 @@ pub enum ParserType {
     Try,
     TryMap,
     CustomFn,
+    TakeNot,
 }
 #[derive(Debug)]
 pub struct ContextError {
@@ -167,4 +168,16 @@ pub fn take(count: usize) -> tag::Take {
  */
 pub fn opt<T>(parser: T) -> combinator::Opt<T> {
     Opt { parser }
+}
+/**
+ * Creates a parser that takes a single item if the underlying parser fails. If the
+ * underlying parser succeeds, this parser fails. For strings, on success this will take a char
+ * and for arrays it will take a single item. 
+ * 
+ * An example usage of this is take_not('a'), which will recognize any single char except for 'a'.
+ */
+pub fn take_not<T>(parser: T) -> combinator::TakeNot<T> {
+    TakeNot {
+        parser
+    }
 }
