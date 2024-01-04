@@ -1,7 +1,4 @@
-use std::{
-    error::Error,
-    ops::{Range, RangeBounds},
-};
+use std::{error::Error, ops::RangeBounds};
 
 use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 
@@ -57,6 +54,7 @@ where
         self.as_slice().fab(input)
     }
 }
+
 pub struct FnBoolSeqParser;
 impl<'a, I, F, E, Item> Parser<'a, I, Item, E, FnBoolSeqParser> for F
 where
@@ -156,7 +154,7 @@ where
         let orig = *input;
         let orig_len: usize = input.len();
         for _ in 0..self.0 {
-            if let Some((_, rest)) = input.try_split_front() {
+            if let Some((_first, rest)) = input.try_split_front() {
                 *input = rest;
             } else {
                 *input = orig;
@@ -175,10 +173,11 @@ where
 
 pub struct ParserFunction;
 
-impl<'a, I: ?Sized, O, E: ParserError> Parser<'a, I, O, E, ParserFunction>
-    for fn(&mut &'a I) -> Result<O, E>
+impl<'c, I: ?Sized, O, E: ParserError, F> Parser<'c, I, O, E, ParserFunction> for F
+where
+    F: Fn(&mut &'c I) -> Result<O, E>,
 {
-    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
+    fn fab(&self, input: &mut &'c I) -> Result<O, E> {
         let checkpoint = *input;
         self(input).map_err(|err| {
             *input = checkpoint;

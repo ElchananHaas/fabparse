@@ -2,12 +2,18 @@
 
 mod branch;
 mod combinator;
+mod repeat;
 mod sequence;
 mod tag;
 
-use std::{error::Error, fmt::Debug, marker::PhantomData};
+use std::{
+    error::Error,
+    fmt::{Debug, Display},
+    marker::PhantomData,
+};
 
-use combinator::{Opt, ParserMap, ParserTryMap, Try, TakeNot};
+use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Try, Value};
+use repeat::{Reducer, Repeat};
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -40,6 +46,7 @@ pub enum ParserType {
     TryMap,
     CustomFn,
     TakeNot,
+    Repeat,
 }
 #[derive(Debug)]
 pub struct ContextError {
@@ -72,16 +79,42 @@ impl ParserError for ContextError {
     }
 }
 
+//An error that carries no other information.
+#[derive(Debug)]
+pub struct UnitError;
+impl Display for UnitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("UnitError")
+    }
+}
+
+impl Error for UnitError {}
 pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     /**
-     * Parses the input. This method advances the input reference to any remaining
+     * Parses the input. This method advances the input reference to the remaining
      * unparsed input. The method is named "fab" instead of "parse" to avoid conflicts
      * with the "parse" method of &str.
      */
     fn fab(&self, input: &mut &'a I) -> Result<O, E>;
     /**
-     * This creates a Try parser that if the underlying parser returns Result::Ok or Option::Some,
-     * unwraps the value. If it returns None or Err, then the Try parser will fail.
+     * Returns a parser that replaces the output of the underlying parser with V.
+     */
+    fn fab_value<V>(self, value: V) -> combinator::Value<Self, V, I, O, E>
+    where
+        Self: Sized,
+    {
+        Value {
+            parser: self,
+            value,
+            phantom_i: PhantomData,
+            phantom_o: PhantomData,
+            phantom_e: PhantomData,
+        }
+    }
+    /**
+     * This creates a Try parser that unwraps the output of the underlying parser
+     * if it returns Result::Ok or Option::Some.
+     * If it returns None or Err, then the Try parser will fail.
      *
      * Only use this method on parsers that return an Option or Result.
      * Otherwise, the returned parser won't implemented the Parser trait.
@@ -95,8 +128,9 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     /**
      * This creates a Map parser that applies the function to the
      * output of the underlying parser.
+     *
      */
-    fn fab_map<FOut>(self, func: fn(O) -> FOut) -> ParserMap<Self, I, O, FOut, E>
+    fn fab_map<F>(self, func: F) -> ParserMap<Self, I, O, E, F>
     where
         Self: Sized,
     {
@@ -105,6 +139,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
             func,
             phantom_i: PhantomData,
             phantom_e: PhantomData,
+            phantom_m: PhantomData,
         }
     }
     /**
@@ -113,7 +148,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
      * it unwraps the input. Othewise, the parser fails.
      *
      */
-    fn fab_try_map<FOut>(self, func: fn(O) -> FOut) -> ParserTryMap<Self, I, O, FOut, E>
+    fn fab_try_map<F>(self, func: F) -> ParserTryMap<Self, I, O, E, F>
     where
         Self: Sized,
     {
@@ -122,7 +157,53 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
             func,
             phantom_i: PhantomData,
             phantom_e: PhantomData,
+            phantom_m: PhantomData,
         }
+    }
+    /**
+     * Repeats the underlying parser, returning the results in a Vec. This
+     * parser will accept any number of repetitions, inlcuding 0.
+     *
+     * The repeat method has some methods to modify its behavior, which can be composed with each other. They are:
+     *
+     * min(usize). Sets an inclusive lower bound on the number of repetitions for the parser to succeed.
+     *
+     * max(usize). Sets an exclusive upper bound of the maximum number of repetitions of the parser for it to succeed.
+     * If it would exceed this number, it fails.
+     *
+     * bound(impl RangeBounds<usize>). Takes in any range type. repeat.bound(min..max) is equivilent to calling repeat.min(min).max(max)
+     * This method can also accept min..=max, min.., ..=max, and ..
+     *
+     * reduce(acc, fn(&mut acc, O) -> ()) where O is the output type of the underlying parser.
+     * reduce(acc, fn(&mut acc, O) -> Result<(), ErrorType>))
+     * reduce(acc, fn(&mut acc, O) -> Option<()>)
+     * reduce(acc, fn(&mut acc, O) -> bool)
+     *
+     * Replaces the Vec output of the parser. Every iteration of the repeat,
+     * the repeat parser will call the reduction function with the current accumulator and the output of
+     * the underlying parser. The accumulator must be Clone. Caution: The output of the reduction
+     * function MUST be a unit type. HashMap::insert returns an option, not the unit type
+     * This can be used to create HashMaps or oher data structures from the repeat parser.
+     *
+     * The reduce method also works with a function returning Result<(), ErrorType> where ErrorType is any type
+     * that is 'static + Send + Sync + Error. In this case, the repeat parser will act as a try reduce, failing
+     * when the reduction function returns an error. For the option and boolean cases, it will fail when the
+     * function returns None or false, respectively.
+     *
+     */
+    fn fab_repeat(self) -> Repeat<Self, I, O, E, fn(&mut Vec<O>, O) -> (), Vec<O>>
+    where
+        Self: Sized,
+        O: Clone,
+    {
+        Repeat::new(
+            self,
+            Reducer {
+                acc: Vec::new(),
+                reduce_fn: |vec: &mut Vec<O>, val| vec.push(val),
+            },
+            0..usize::MAX,
+        )
     }
 }
 
@@ -172,12 +253,10 @@ pub fn opt<T>(parser: T) -> combinator::Opt<T> {
 /**
  * Creates a parser that takes a single item if the underlying parser fails. If the
  * underlying parser succeeds, this parser fails. For strings, on success this will take a char
- * and for arrays it will take a single item. 
- * 
+ * and for arrays it will take a single item.
+ *
  * An example usage of this is take_not('a'), which will recognize any single char except for 'a'.
  */
 pub fn take_not<T>(parser: T) -> combinator::TakeNot<T> {
-    TakeNot {
-        parser
-    }
+    TakeNot { parser }
 }

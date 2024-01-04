@@ -2,21 +2,23 @@ use std::{error::Error, marker::PhantomData};
 
 use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 
-pub struct ParserMap<P, I: ?Sized, M, O, E> {
+pub struct ParserMap<P, I: ?Sized, M, E, F> {
     pub parser: P,
-    pub func: fn(M) -> O,
+    pub func: F,
     pub phantom_i: PhantomData<I>,
     pub phantom_e: PhantomData<E>,
+    pub phantom_m: PhantomData<M>,
 }
 
 pub struct ParserMapT<PType, M> {
     phantom_ptype: PhantomData<PType>,
     phantom_m: PhantomData<M>,
 }
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType> Parser<'a, I, O, E, ParserMapT<PType, M>>
-    for ParserMap<P, I, M, O, E>
+impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, F> Parser<'a, I, O, E, ParserMapT<PType, M>>
+    for ParserMap<P, I, M, E, F>
 where
     P: Parser<'a, I, M, E, PType>,
+    F: Fn(M) -> O,
 {
     fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         match self.parser.fab(input) {
@@ -68,21 +70,23 @@ where
     }
 }
 
-pub struct ParserTryMap<P, I: ?Sized, M, O, E> {
+pub struct ParserTryMap<P, I: ?Sized, M, E, F> {
     pub parser: P,
-    pub func: fn(M) -> O,
+    pub func: F,
     pub phantom_i: PhantomData<I>,
     pub phantom_e: PhantomData<E>,
+    pub phantom_m: PhantomData<M>,
 }
 
-pub struct ParserMapOptionT<PType, M> {
+pub struct ParserTryMapOption<PType, M> {
     phantom_ptype: PhantomData<PType>,
     phantom_m: PhantomData<M>,
 }
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType> Parser<'a, I, O, E, ParserMapOptionT<PType, M>>
-    for ParserTryMap<P, I, M, Option<O>, E>
+impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, F>
+    Parser<'a, I, O, E, ParserTryMapOption<PType, M>> for ParserTryMap<P, I, M, E, F>
 where
     P: Parser<'a, I, M, E, PType>,
+    F: Fn(M) -> Option<O>,
 {
     fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
@@ -99,11 +103,17 @@ where
     }
 }
 
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, Err>
-    Parser<'a, I, O, E, ParserMapOptionT<PType, M>> for ParserTryMap<P, I, M, Result<O, Err>, E>
+pub struct ParserTryMapResult<PType, M, FErr> {
+    phantom_ptype: PhantomData<PType>,
+    phantom_m: PhantomData<M>,
+    phantom_ferr: PhantomData<FErr>,
+}
+impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, FErr, F>
+    Parser<'a, I, O, E, ParserTryMapResult<PType, M, FErr>> for ParserTryMap<P, I, M, E, F>
 where
     P: Parser<'a, I, M, E, PType>,
-    Err: Error + Send + Sync + 'static,
+    FErr: Error + Send + Sync + 'static,
+    F: Fn(M) -> Result<O, FErr>,
 {
     fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
@@ -169,5 +179,29 @@ where
                 }
             }
         }
+    }
+}
+
+pub struct Value<P, V, I: ?Sized, O, E> {
+    pub parser: P,
+    pub value: V,
+    pub phantom_i: PhantomData<I>,
+    pub phantom_o: PhantomData<O>,
+    pub phantom_e: PhantomData<E>,
+}
+
+pub struct ValueParser<P, O> {
+    pub parser: PhantomData<P>,
+    pub out: PhantomData<O>,
+}
+impl<'a, I, O, E: ParserError, ParType, P, V> Parser<'a, I, V, E, ValueParser<ParType, O>>
+    for Value<P, V, I, O, E>
+where
+    P: Parser<'a, I, O, E, ParType>,
+    I: ?Sized + Sequence,
+    V: Clone,
+{
+    fn fab(&self, input: &mut &'a I) -> Result<V, E> {
+        self.parser.fab(input).map(|_| self.value.clone())
     }
 }

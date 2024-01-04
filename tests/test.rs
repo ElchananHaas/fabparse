@@ -1,6 +1,6 @@
-use std::{error::Error, fmt, str::FromStr};
+use std::{collections::HashMap, error::Error, fmt, str::FromStr};
 
-use fabparse::{self, opt, take, ContextError, Parser, take_not};
+use fabparse::{self, opt, take, take_not, ContextError, Parser};
 #[test]
 fn char_tag_parser_success() {
     let mut input = "abc";
@@ -459,5 +459,92 @@ fn take_not_empty() {
     let mut input = "";
     let res: Result<_, ContextError> = take_not("a").fab(&mut input);
     assert!(res.is_err());
+    assert_eq!("", input);
+}
+
+#[test]
+fn value_success() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> = "a".fab_value(5).fab(&mut input);
+    assert_eq!(5, res.unwrap());
+    assert_eq!("bc", input);
+}
+
+#[test]
+fn value_fail() {
+    let mut input = "abc";
+    let res: Result<_, ContextError> = "b".fab_value(5).fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("abc", input);
+}
+
+#[test]
+fn repeat_success() {
+    let mut input = "aac";
+    let res: Result<_, ContextError> = 'a'.fab_repeat().fab(&mut input);
+    assert_eq!(vec!['a', 'a'], res.unwrap());
+    assert_eq!("c", input);
+}
+
+#[test]
+fn repeat_min_success() {
+    let mut input = "aac";
+    let res: Result<_, ContextError> = 'a'.fab_repeat().min(2).fab(&mut input);
+    assert_eq!(vec!['a', 'a'], res.unwrap());
+    assert_eq!("c", input);
+}
+
+#[test]
+fn repeat_min_fail() {
+    let mut input = "aac";
+    let res: Result<_, ContextError> = 'a'.fab_repeat().min(3).fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("aac", input);
+}
+
+#[test]
+fn repeat_max_success() {
+    let mut input = "aac";
+    let res: Result<_, ContextError> = 'a'.fab_repeat().max(3).fab(&mut input);
+    assert_eq!(vec!['a', 'a'], res.unwrap());
+    assert_eq!("c", input);
+}
+
+#[test]
+fn repeat_max_fail() {
+    let mut input = "aac";
+    let res: Result<_, ContextError> = 'a'.fab_repeat().max(2).fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("aac", input);
+}
+
+fn char_num<'a>(input: &mut &'a str) -> Result<(char, u32), ContextError> {
+    ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10))).fab(input)
+}
+
+fn reducer(map: &mut HashMap<char, u32>, val: (char, u32)) {
+    map.insert(val.0, val.1);
+}
+#[test]
+fn repeat_reduce_hashmap_success() {
+    let mut input = "a1b2c3";
+    let res: Result<_, ContextError> = char_num
+        .fab_repeat()
+        .reduce(HashMap::new(), reducer)
+        .fab(&mut input);
+    let expected_res: HashMap<char, u32> = [('a',1),('b',2),('c',3)].into_iter().collect();
+    assert_eq!(expected_res, res.unwrap());
+    assert_eq!("", input);
+}
+
+#[test]
+fn repeat_reduce_hashmap_lambdas() {
+    let mut input = "a1b2c3";
+    let res: Result<_, ContextError> = ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10)))
+        .fab_repeat()
+        .reduce(HashMap::new(), |state: &mut HashMap<char, u32>, val: (char, u32)| {state.insert(val.0, val.1);} )
+        .fab(&mut input);
+    let expected_res: HashMap<char, u32> = [('a',1),('b',2),('c',3)].into_iter().collect();
+    assert_eq!(expected_res, res.unwrap());
     assert_eq!("", input);
 }
