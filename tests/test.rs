@@ -548,3 +548,14 @@ fn repeat_reduce_hashmap_lambdas() {
     assert_eq!(expected_res, res.unwrap());
     assert_eq!("", input);
 }
+
+#[test]
+fn repeat_reduce_fn_err_lambdas() {
+    let mut input = "a1b2c3";
+    let res: Result<_, ContextError> = ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10)))
+        .fab_repeat()
+        .reduce(HashMap::new(), |state: &mut HashMap<char, u32>, val: (char, u32)| {None} )
+        .fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("a1b2c3", input);
+}
