@@ -93,7 +93,7 @@ fn loc<I: ?Sized>(seq: &I) -> usize {
 
 //Checks that the repetition count is within the allowed repetitions. If it isn't, it resets the input to the original input
 //and returns an error.
-fn check_bounds<'a, I: ?Sized, O, E: ParserError>(
+fn check_bounds<'a, I: ?Sized + Sequence, O, E: ParserError>(
     input: &mut &'a I,
     orig_input: &'a I,
     repetitions: usize,

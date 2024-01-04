@@ -14,6 +14,7 @@ use std::{
 
 use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Try, Value};
 use repeat::{Reducer, Repeat};
+use sequence::Sequence;
 
 /**
  * Trait for a parser error. Input is the location of the input as a pointer.
@@ -25,7 +26,7 @@ use repeat::{Reducer, Repeat};
  * to the parser (no unsafe required).
  */
 pub trait ParserError {
-    fn from_parser_error<T: ?Sized>(input: *const T, parser_type: ParserType) -> Self;
+    fn from_parser_error<T: ?Sized + Sequence>(input: *const T, parser_type: ParserType) -> Self;
     fn from_external_error<T: ?Sized, E: Error + Send + Sync + 'static>(
         input: *const T,
         parser_type: ParserType,
@@ -181,10 +182,11 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
      *
      * Replaces the Vec output of the parser. Every iteration of the repeat,
      * the repeat parser will call the reduction function with the current accumulator and the output of
-     * the underlying parser. The accumulator must be Clone. Caution: The output of the reduction
-     * function MUST be a unit type. HashMap::insert returns an option, not the unit type
-     * This can be used to create HashMaps or oher data structures from the repeat parser.
-     *
+     * the underlying parser. This can be used to create HashMaps or other data structures from the repeat parser.
+     * 
+     * The accumulator must be Clone. Caution: The output of the reduction
+     * function MUST be a unit type. HashMap::insert returns an option, not the unit type. 
+     * 
      * The reduce method also works with a function returning Result<(), ErrorType> where ErrorType is any type
      * that is 'static + Send + Sync + Error. In this case, the repeat parser will act as a try reduce, failing
      * when the reduction function returns an error. For the option and boolean cases, it will fail when the

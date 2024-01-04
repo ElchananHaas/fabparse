@@ -36,7 +36,7 @@ pub struct TryParser<T> {
     t: PhantomData<T>,
 }
 
-impl<'a, I: ?Sized, O, E: ParserError, P, PType> Parser<'a, I, O, E, TryParser<PType>> for Try<P>
+impl<'a, I: ?Sized + Sequence, O, E: ParserError, P, PType> Parser<'a, I, O, E, TryParser<PType>> for Try<P>
 where
     P: Parser<'a, I, Option<O>, E, PType>,
 {
@@ -82,7 +82,7 @@ pub struct ParserTryMapOption<PType, M> {
     phantom_ptype: PhantomData<PType>,
     phantom_m: PhantomData<M>,
 }
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, F>
+impl<'a, P, M, I: ?Sized + Sequence, O, E: ParserError, PType, F>
     Parser<'a, I, O, E, ParserTryMapOption<PType, M>> for ParserTryMap<P, I, M, E, F>
 where
     P: Parser<'a, I, M, E, PType>,
