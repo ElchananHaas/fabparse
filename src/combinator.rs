@@ -56,11 +56,12 @@ pub struct TryResultParser<T, Err> {
     t: PhantomData<T>,
     err: PhantomData<Err>,
 }
-impl<'a, I: ?Sized, O, E: ParserError, P, PType, Err>
+impl<'a, I, O, E: ParserError, P, PType, Err>
     Parser<'a, I, O, E, TryResultParser<PType, Err>> for Try<P>
 where
     P: Parser<'a, I, Result<O, Err>, E, PType>,
     Err: Error + Send + Sync + 'static,
+    I: ?Sized + Sequence
 {
     fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;

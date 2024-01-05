@@ -11,14 +11,13 @@ use crate::{sequence::Sequence, ParserType};
  * Trait for a parser error. Input is the location of the input as a pointer.
  * parser_type is the type of parser.
  *
- * In order to simplify lifetimes used by the parser, the parser error
+ * In order to simplify lifetimes used by the error, the parser error
  * stores a pointer to the location the error occured rather than a reference.
- *
- *
+ * This doesn't require unsafe to use properly.
  */
 pub trait ParserError {
     fn from_parser_error<T: ?Sized + Sequence>(input: *const T, parser_type: ParserType) -> Self;
-    fn from_external_error<T: ?Sized, E: Error + Send + Sync + 'static>(
+    fn from_external_error<T: ?Sized + Sequence, E: Error + Send + Sync + 'static>(
         input: *const T,
         parser_type: ParserType,
         cause: E,
@@ -82,11 +81,11 @@ pub struct FabError {
  * Location ["a1b2"]^["c3"] from parser Repeat
  * From cause [TryReducerFailed]
  * 
- * This method requires that you pass in the input of the parser. 
- * If you don't the method may panic or print and incorrect stack trace. 
+ * This method requires that you pass in the input of the parser that generated the error. 
+ * If you don't the method may panic or print and incorrect stack trace.
  * 
- * This also has a method print_trace_window(input, window_size)
- * which controls how much context is printed. By default, it will be 10 chars/items
+ * This error type also has a method print_trace_window(input, window_size)
+ * which controls how much context is printed. By default, it will be 10 chars or items
  */
 impl Display for FabError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
