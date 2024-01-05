@@ -1,8 +1,10 @@
 use std::marker::PhantomData;
 
-use crate::{Parser, ParserError};
+use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 
+#[derive(Clone, Debug)]
 pub struct Alt<T>(pub T);
+#[derive(Clone, Debug)]
 pub struct Permutation<T>(pub T);
 
 macro_rules! alt_impl {
@@ -14,7 +16,7 @@ macro_rules! alt_impl {
         }
 
         #[allow(unused_assignments)]
-        impl<'a, I: ?Sized, O, E: ParserError, $($parser, $ptype,)+> Parser<'a, I, O, E, $tstruct<$($ptype,)+>> for Alt<($($parser,)+)>
+        impl<'a, I: ?Sized + Sequence, O, E: ParserError, $($parser, $ptype,)+> Parser<'a, I, O, E, $tstruct<$($ptype,)+>> for Alt<($($parser,)+)>
             where $(
                 $parser: Parser<'a, I, O, E, $ptype>,
             )+{
@@ -44,7 +46,9 @@ macro_rules! alt_impl {
                     *input = startloc;
                 )+
                 //Alt is only implemented for tuples with at least 1 element, so we will always have some error.
-                return Err(maxlocerr.expect("Something went wrong in the alt parser."));
+                let mut maxlocerr = maxlocerr.expect("Something went wrong in the alt parser.");
+                maxlocerr.add_context(startloc, ParserType::Alt);
+                return Err(maxlocerr);
             }
         }
 
@@ -72,7 +76,7 @@ macro_rules! permutation_impl {
         }
 
         #[allow(unused_assignments)]
-        impl<'a, I: ?Sized, $($otype, )+ E: ParserError, $($parser, $ptype,)+> Parser<'a, I, ($($otype,)+), E, $tstruct<$($ptype,)+>> for Permutation<($($parser,)+)>
+        impl<'a, I: ?Sized + Sequence, $($otype, )+ E: ParserError, $($parser, $ptype,)+> Parser<'a, I, ($($otype,)+), E, $tstruct<$($ptype,)+>> for Permutation<($($parser,)+)>
             where $(
                 $parser: Parser<'a, I, $otype, E, $ptype>,
             )+{
@@ -117,7 +121,9 @@ macro_rules! permutation_impl {
                     } else {
                         *input = outer_startloc;
                         //If no parsers fail, then done will be true and this line won't run.
-                        return Err(maxlocerr.expect("Something went wrong in the permutation parser."))
+                        let mut maxlocerr = maxlocerr.expect("Something went wrong in the permutation parser.");
+                        maxlocerr.add_context(outer_startloc, ParserType::Permutation);
+                        return Err(maxlocerr);
                     }
                 }
             }
@@ -147,7 +153,7 @@ macro_rules! sequence_impl {
         }
 
         #[allow(unused_assignments)]
-        impl<'a, I: ?Sized, $($otype, )+ E: ParserError, $($parser, $ptype,)+> Parser<'a, I, ($($otype,)+), E, $tstruct<$($ptype,)+>> for ($($parser,)+)
+        impl<'a, I: ?Sized + Sequence, $($otype, )+ E: ParserError, $($parser, $ptype,)+> Parser<'a, I, ($($otype,)+), E, $tstruct<$($ptype,)+>> for ($($parser,)+)
             where $(
                 $parser: Parser<'a, I, $otype, E, $ptype>,
             )+{
@@ -160,7 +166,8 @@ macro_rules! sequence_impl {
                         Ok(res) => {
                             $rval = res;
                         }
-                        Err(err) => {
+                        Err(mut err) => {
+                            err.add_context(startloc, ParserType::Sequence);
                             *input = startloc;
                             return Err(err);
                         }

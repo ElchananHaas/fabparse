@@ -50,7 +50,7 @@ impl Sequence for str {
     type Item = char;
 
     fn try_split_at<'a>(&'a self, mid: usize) -> Option<(&'a Self, &'a Self)> {
-        if mid > self.len() {
+        if !self.is_char_boundary(mid) {
             None
         } else {
             Some(self.split_at(mid))

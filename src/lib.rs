@@ -2,6 +2,7 @@
 
 mod branch;
 mod combinator;
+pub mod error;
 mod repeat;
 mod sequence;
 mod tag;
@@ -13,75 +14,27 @@ use std::{
 };
 
 use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Try, Value};
+pub use error::FabError;
+pub use error::ParserError;
+pub use repeat::TryReducer;
 use repeat::{Reducer, Repeat};
-use sequence::Sequence;
 
-/**
- * Trait for a parser error. Input is the location of the input as a pointer.
- * parser_type is the type of parser.
- *
- * In order to simplify lifetimes used by the parser, the parser error
- * stores a pointer to the location the error occured rather than a reference
- * You can use the pointer to get the surrounding context in the original input
- * to the parser (no unsafe required).
- */
-pub trait ParserError {
-    fn from_parser_error<T: ?Sized + Sequence>(input: *const T, parser_type: ParserType) -> Self;
-    fn from_external_error<T: ?Sized, E: Error + Send + Sync + 'static>(
-        input: *const T,
-        parser_type: ParserType,
-        cause: E,
-    ) -> Self;
-    /**
-     * Get the location of the error. This is used in combinators to recognize the parser that made
-     * the furthest progress.
-     */
-    fn get_loc(&self) -> Option<usize>;
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ParserType {
     Tag,
     Alt,
     Try,
+    Map,
     TryMap,
-    CustomFn,
+    Function,
     TakeNot,
     Repeat,
-}
-#[derive(Debug)]
-pub struct ContextError {
-    pub parser_type: ParserType,
-    pub location: usize,
-    pub cause: Option<Box<dyn Error>>,
-}
-
-impl ParserError for ContextError {
-    fn from_parser_error<T: ?Sized>(input: *const T, parser_type: ParserType) -> Self {
-        ContextError {
-            parser_type,
-            location: input as *const u8 as usize,
-            cause: None,
-        }
-    }
-    fn from_external_error<T: ?Sized, E: Error + Send + Sync + 'static>(
-        input: *const T,
-        parser_type: ParserType,
-        cause: E,
-    ) -> Self {
-        ContextError {
-            parser_type,
-            location: input as *const u8 as usize,
-            cause: Some(Box::new(cause)),
-        }
-    }
-    fn get_loc(&self) -> Option<usize> {
-        return Some(self.location);
-    }
+    Sequence,
+    Permutation,
 }
 
 //An error that carries no other information.
-#[derive(Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct UnitError;
 impl Display for UnitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -179,14 +132,17 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
      * reduce(acc, fn(&mut acc, O) -> Result<(), ErrorType>))
      * reduce(acc, fn(&mut acc, O) -> Option<()>)
      * reduce(acc, fn(&mut acc, O) -> bool)
+     * retuce(acc, custom type implementing TryReducer)
      *
      * Replaces the Vec output of the parser. Every iteration of the repeat,
      * the repeat parser will call the reduction function with the current accumulator and the output of
      * the underlying parser. This can be used to create HashMaps or other data structures from the repeat parser.
-     * 
+     *
      * The accumulator must be Clone. Caution: The output of the reduction
-     * function MUST be a unit type. HashMap::insert returns an option, not the unit type. 
-     * 
+     * function MUST be a unit type. HashMap::insert returns an option, not the unit type.
+     * In some cases it might be easier to implement the TryReducer trait rather
+     * than using a huge lambda.
+     *
      * The reduce method also works with a function returning Result<(), ErrorType> where ErrorType is any type
      * that is 'static + Send + Sync + Error. In this case, the repeat parser will act as a try reduce, failing
      * when the reduction function returns an error. For the option and boolean cases, it will fail when the

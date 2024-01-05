@@ -173,14 +173,15 @@ where
 
 pub struct ParserFunction;
 
-impl<'c, I: ?Sized, O, E: ParserError, F> Parser<'c, I, O, E, ParserFunction> for F
+impl<'c, I: ?Sized + Sequence, O, E: ParserError, F> Parser<'c, I, O, E, ParserFunction> for F
 where
     F: Fn(&mut &'c I) -> Result<O, E>,
 {
     fn fab(&self, input: &mut &'c I) -> Result<O, E> {
         let checkpoint = *input;
-        self(input).map_err(|err| {
+        self(input).map_err(|mut err| {
             *input = checkpoint;
+            err.add_context(checkpoint, ParserType::Function);
             err
         })
     }

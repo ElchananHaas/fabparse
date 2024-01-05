@@ -1,10 +1,10 @@
 use std::{collections::HashMap, error::Error, fmt, str::FromStr};
 
-use fabparse::{self, opt, take, take_not, ContextError, Parser};
+use fabparse::{opt, take, take_not, FabError, Parser};
 #[test]
 fn char_tag_parser_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = 'a'.fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab(&mut input);
     assert_eq!('a', res.unwrap());
     assert_eq!("bc", input);
 }
@@ -12,7 +12,7 @@ fn char_tag_parser_success() {
 #[test]
 fn char_tag_parser_fail() {
     let mut input = "cde";
-    let res: Result<_, ContextError> = 'a'.fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab(&mut input);
     assert!(res.is_err());
     assert_eq!("cde", input);
 }
@@ -20,7 +20,7 @@ fn char_tag_parser_fail() {
 #[test]
 fn slice_tag_parser_success() {
     let mut slice = [1, 2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = [1, 2].as_slice().fab(&mut slice);
+    let res: Result<_, FabError> = [1, 2].as_slice().fab(&mut slice);
     assert_eq!([1, 2], res.unwrap());
     assert_eq!([3, 4], slice);
 }
@@ -28,7 +28,7 @@ fn slice_tag_parser_success() {
 #[test]
 fn slice_tag_parser_fail_short() {
     let mut slice = [1].as_slice();
-    let res: Result<_, ContextError> = [1, 2].as_slice().fab(&mut slice);
+    let res: Result<_, FabError> = [1, 2].as_slice().fab(&mut slice);
     assert!(res.is_err());
     assert_eq!([1], slice);
 }
@@ -36,7 +36,7 @@ fn slice_tag_parser_fail_short() {
 #[test]
 fn slice_tag_parser_fail_mismatch() {
     let mut slice = [1, 4, 8].as_slice();
-    let res: Result<_, ContextError> = [1, 2].as_slice().fab(&mut slice);
+    let res: Result<_, FabError> = [1, 2].as_slice().fab(&mut slice);
     assert!(res.is_err());
     assert_eq!([1, 4, 8], slice);
 }
@@ -44,7 +44,7 @@ fn slice_tag_parser_fail_mismatch() {
 #[test]
 fn const_array_parser_success() {
     let mut slice = [1, 2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = [1, 2].fab(&mut slice);
+    let res: Result<_, FabError> = [1, 2].fab(&mut slice);
     assert_eq!([1, 2], res.unwrap());
     assert_eq!([3, 4], slice);
 }
@@ -52,7 +52,7 @@ fn const_array_parser_success() {
 #[test]
 fn tag_eq_parser_success() {
     let mut slice = [1, 2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = 1.fab(&mut slice);
+    let res: Result<_, FabError> = 1.fab(&mut slice);
     assert_eq!(1, res.unwrap());
     assert_eq!([2, 3, 4], slice);
 }
@@ -60,7 +60,7 @@ fn tag_eq_parser_success() {
 #[test]
 fn fnbool_slice_parser_success() {
     let mut slice = [1, 2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = (|x| x == 1).fab(&mut slice);
+    let res: Result<_, FabError> = (|x| x == 1).fab(&mut slice);
     assert_eq!(1, res.unwrap());
     assert_eq!([2, 3, 4], slice);
 }
@@ -68,7 +68,7 @@ fn fnbool_slice_parser_success() {
 #[test]
 fn fnbool_slice_parser_error() {
     let mut slice = [1, 2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = (|x| x == 3).fab(&mut slice);
+    let res: Result<_, FabError> = (|x| x == 3).fab(&mut slice);
     assert!(res.is_err());
     assert_eq!([1, 2, 3, 4], slice);
 }
@@ -76,7 +76,7 @@ fn fnbool_slice_parser_error() {
 #[test]
 fn fnbool_str_parser_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = (|x| x == 'a').fab(&mut input);
+    let res: Result<_, FabError> = (|x| x == 'a').fab(&mut input);
     assert_eq!('a', res.unwrap());
     assert_eq!("bc", input);
 }
@@ -84,7 +84,7 @@ fn fnbool_str_parser_success() {
 #[test]
 fn fnbool_str_parser_error() {
     let mut input = "cde";
-    let res: Result<_, ContextError> = (|x| x == 'a').fab(&mut input);
+    let res: Result<_, FabError> = (|x| x == 'a').fab(&mut input);
     assert!(res.is_err());
     assert_eq!("cde", input);
 }
@@ -100,7 +100,7 @@ fn str_option_func(c: char) -> Option<i32> {
 #[test]
 fn fnoption_str_parser_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = str_option_func.fab(&mut input);
+    let res: Result<_, FabError> = str_option_func.fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -108,7 +108,7 @@ fn fnoption_str_parser_success() {
 #[test]
 fn fnoption_str_parser_error() {
     let mut input = "cde";
-    let res: Result<_, ContextError> = str_option_func.fab(&mut input);
+    let res: Result<_, FabError> = str_option_func.fab(&mut input);
     assert!(res.is_err());
     assert_eq!("cde", input);
 }
@@ -124,7 +124,7 @@ fn slice_option_func(val: i32) -> Option<i32> {
 #[test]
 fn fnoption_slice_parser_success() {
     let mut slice = [1, 2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = slice_option_func.fab(&mut slice);
+    let res: Result<_, FabError> = slice_option_func.fab(&mut slice);
     assert_eq!(5, res.unwrap());
     assert_eq!([2, 3, 4], slice);
 }
@@ -132,7 +132,7 @@ fn fnoption_slice_parser_success() {
 #[test]
 fn fnoption_slice_parser_error() {
     let mut slice = [2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = slice_option_func.fab(&mut slice);
+    let res: Result<_, FabError> = slice_option_func.fab(&mut slice);
     assert!(res.is_err());
     assert_eq!([2, 3, 4], slice);
 }
@@ -156,7 +156,7 @@ fn str_result_func(c: char) -> Result<i32, <i32 as FromStr>::Err> {
 #[test]
 fn fnresult_slice_parser_success() {
     let mut slice = [1, 2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = slice_result_func.fab(&mut slice);
+    let res: Result<_, FabError> = slice_result_func.fab(&mut slice);
     assert_eq!(5, res.unwrap());
     assert_eq!([2, 3, 4], slice);
 }
@@ -164,7 +164,7 @@ fn fnresult_slice_parser_success() {
 #[test]
 fn fnresult_slice_parser_error() {
     let mut slice = [2, 3, 4].as_slice();
-    let res: Result<_, ContextError> = slice_result_func.fab(&mut slice);
+    let res: Result<_, FabError> = slice_result_func.fab(&mut slice);
     assert!(res.is_err());
     assert_eq!([2, 3, 4], slice);
 }
@@ -172,7 +172,7 @@ fn fnresult_slice_parser_error() {
 #[test]
 fn fnresult_str_parser_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = str_result_func.fab(&mut input);
+    let res: Result<_, FabError> = str_result_func.fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -180,7 +180,7 @@ fn fnresult_str_parser_success() {
 #[test]
 fn fnresult_str_parser_error() {
     let mut input = "cde";
-    let res: Result<_, ContextError> = str_result_func.fab(&mut input);
+    let res: Result<_, FabError> = str_result_func.fab(&mut input);
     assert!(res.is_err());
     assert_eq!("cde", input);
 }
@@ -188,7 +188,7 @@ fn fnresult_str_parser_error() {
 #[test]
 fn strtag_unicode_success() {
     let mut input = "😀🇷🇺";
-    let res: Result<_, ContextError> = '😀'.fab(&mut input);
+    let res: Result<_, FabError> = '😀'.fab(&mut input);
     assert_eq!('😀', res.unwrap());
     assert_eq!("🇷🇺", input);
 }
@@ -197,7 +197,7 @@ fn strtag_unicode_success() {
 fn tag_ergonomics() {
     let mut slice = [1, 2, 3, 4].as_slice();
 
-    fn parse_slice(input: &mut &[i32]) -> Result<i32, ContextError> {
+    fn parse_slice(input: &mut &[i32]) -> Result<i32, FabError> {
         1.fab(input)
     }
     let res = parse_slice(&mut slice);
@@ -208,7 +208,7 @@ fn tag_ergonomics() {
 #[test]
 fn map_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = 'a'.fab_map(|_| 5).fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab_map(|_| 5).fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -216,7 +216,7 @@ fn map_success() {
 #[test]
 fn take_map_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1).fab_map(|_| 5).fab(&mut input);
+    let res: Result<_, FabError> = take(1).fab_map(|_| 5).fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -224,7 +224,7 @@ fn take_map_success() {
 #[test]
 fn take_map_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4).fab_map(|_| 5).fab(&mut input);
+    let res: Result<_, FabError> = take(4).fab_map(|_| 5).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -232,7 +232,7 @@ fn take_map_fail() {
 #[test]
 fn try_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1).fab_map(|_| Some(5)).fab_try().fab(&mut input);
+    let res: Result<_, FabError> = take(1).fab_map(|_| Some(5)).fab_try().fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -240,7 +240,7 @@ fn try_success() {
 #[test]
 fn try_parser_inner_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4).fab_map(|_| Some(5)).fab_try().fab(&mut input);
+    let res: Result<_, FabError> = take(4).fab_map(|_| Some(5)).fab_try().fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -248,7 +248,7 @@ fn try_parser_inner_fail() {
 #[test]
 fn try_parser_none_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1).fab_map(|_| None::<i32>).fab_try().fab(&mut input);
+    let res: Result<_, FabError> = take(1).fab_map(|_| None::<i32>).fab_try().fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -271,7 +271,7 @@ impl Error for TestError {
 #[test]
 fn try_result_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
+    let res: Result<_, FabError> = take(1)
         .fab_map(|_| Ok::<_, TestError>(5))
         .fab_try()
         .fab(&mut input);
@@ -282,7 +282,7 @@ fn try_result_success() {
 #[test]
 fn try_result_parser_inner_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4)
+    let res: Result<_, FabError> = take(4)
         .fab_map(|_| Ok::<_, TestError>(5))
         .fab_try()
         .fab(&mut input);
@@ -293,7 +293,7 @@ fn try_result_parser_inner_fail() {
 #[test]
 fn try_result_parser_none_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4)
+    let res: Result<_, FabError> = take(4)
         .fab_map(|_| Err::<i32, _>(TestError))
         .fab_try()
         .fab(&mut input);
@@ -304,7 +304,7 @@ fn try_result_parser_none_fail() {
 #[test]
 fn try_result_trait_method_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
+    let res: Result<_, FabError> = take(1)
         .fab_map(|_| Ok::<_, TestError>(5))
         .fab_try()
         .fab(&mut input);
@@ -315,7 +315,7 @@ fn try_result_trait_method_success() {
 #[test]
 fn map_trait_method_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1).fab_map(|_| 5).fab(&mut input);
+    let res: Result<_, FabError> = take(1).fab_map(|_| 5).fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -323,7 +323,7 @@ fn map_trait_method_success() {
 #[test]
 fn try_map_option_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1).fab_try_map(|_| Some(5)).fab(&mut input);
+    let res: Result<_, FabError> = take(1).fab_try_map(|_| Some(5)).fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -331,7 +331,7 @@ fn try_map_option_success() {
 #[test]
 fn try_map_option_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1).fab_try_map(|_| None::<i32>).fab(&mut input);
+    let res: Result<_, FabError> = take(1).fab_try_map(|_| None::<i32>).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -339,7 +339,7 @@ fn try_map_option_fail() {
 #[test]
 fn try_map_option_parser_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4).fab_try_map(|_| Some(5)).fab(&mut input);
+    let res: Result<_, FabError> = take(4).fab_try_map(|_| Some(5)).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -347,7 +347,7 @@ fn try_map_option_parser_fail() {
 #[test]
 fn try_map_result_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
+    let res: Result<_, FabError> = take(1)
         .fab_try_map(|_| Ok::<_, TestError>(5))
         .fab(&mut input);
     assert_eq!(5, res.unwrap());
@@ -357,7 +357,7 @@ fn try_map_result_success() {
 #[test]
 fn try_map_result_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(1)
+    let res: Result<_, FabError> = take(1)
         .fab_try_map(|_| Err::<i32, _>(TestError))
         .fab(&mut input);
     assert!(res.is_err());
@@ -367,7 +367,7 @@ fn try_map_result_fail() {
 #[test]
 fn try_map_option_result_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take(4)
+    let res: Result<_, FabError> = take(4)
         .fab_try_map(|_| Ok::<_, TestError>(5))
         .fab(&mut input);
     assert!(res.is_err());
@@ -377,11 +377,11 @@ fn try_map_option_result_fail() {
 #[test]
 fn str_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = "a".fab(&mut input);
+    let res: Result<_, FabError> = "a".fab(&mut input);
     assert_eq!("a", res.unwrap());
     assert_eq!("bc", input);
     let mut input = "abc";
-    let res: Result<_, ContextError> = "abc".fab(&mut input);
+    let res: Result<_, FabError> = "abc".fab(&mut input);
     assert_eq!("abc", res.unwrap());
     assert_eq!("", input);
 }
@@ -389,7 +389,7 @@ fn str_success() {
 #[test]
 fn str_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = "ad".fab(&mut input);
+    let res: Result<_, FabError> = "ad".fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -397,11 +397,11 @@ fn str_fail() {
 #[test]
 fn opt_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = opt("a").fab(&mut input);
+    let res: Result<_, FabError> = opt("a").fab(&mut input);
     assert_eq!(Some("a"), res.unwrap());
     assert_eq!("bc", input);
     let mut input = "abc";
-    let res: Result<_, ContextError> = opt("b").fab(&mut input);
+    let res: Result<_, FabError> = opt("b").fab(&mut input);
     assert_eq!(None, res.unwrap());
     assert_eq!("abc", input);
 }
@@ -409,7 +409,7 @@ fn opt_success() {
 #[test]
 fn tuple_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = ("a", "b").fab(&mut input);
+    let res: Result<_, FabError> = ("a", "b").fab(&mut input);
     assert_eq!(("a", "b"), res.unwrap());
     assert_eq!("c", input);
 }
@@ -417,7 +417,7 @@ fn tuple_success() {
 #[test]
 fn tuple_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = ("b", "a").fab(&mut input);
+    let res: Result<_, FabError> = ("b", "a").fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -425,7 +425,7 @@ fn tuple_fail() {
 #[test]
 fn range_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = ('a'..='z').fab(&mut input);
+    let res: Result<_, FabError> = ('a'..='z').fab(&mut input);
     assert_eq!('a', res.unwrap());
     assert_eq!("bc", input);
 }
@@ -433,7 +433,7 @@ fn range_success() {
 #[test]
 fn range_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = ('b'..='z').fab(&mut input);
+    let res: Result<_, FabError> = ('b'..='z').fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -441,7 +441,7 @@ fn range_fail() {
 #[test]
 fn take_not_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take_not("b").fab(&mut input);
+    let res: Result<_, FabError> = take_not("b").fab(&mut input);
     assert_eq!('a', res.unwrap());
     assert_eq!("bc", input);
 }
@@ -449,7 +449,7 @@ fn take_not_success() {
 #[test]
 fn take_not_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = take_not("a").fab(&mut input);
+    let res: Result<_, FabError> = take_not("a").fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -457,7 +457,7 @@ fn take_not_fail() {
 #[test]
 fn take_not_empty() {
     let mut input = "";
-    let res: Result<_, ContextError> = take_not("a").fab(&mut input);
+    let res: Result<_, FabError> = take_not("a").fab(&mut input);
     assert!(res.is_err());
     assert_eq!("", input);
 }
@@ -465,7 +465,7 @@ fn take_not_empty() {
 #[test]
 fn value_success() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = "a".fab_value(5).fab(&mut input);
+    let res: Result<_, FabError> = "a".fab_value(5).fab(&mut input);
     assert_eq!(5, res.unwrap());
     assert_eq!("bc", input);
 }
@@ -473,7 +473,7 @@ fn value_success() {
 #[test]
 fn value_fail() {
     let mut input = "abc";
-    let res: Result<_, ContextError> = "b".fab_value(5).fab(&mut input);
+    let res: Result<_, FabError> = "b".fab_value(5).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("abc", input);
 }
@@ -481,7 +481,7 @@ fn value_fail() {
 #[test]
 fn repeat_success() {
     let mut input = "aac";
-    let res: Result<_, ContextError> = 'a'.fab_repeat().fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab_repeat().fab(&mut input);
     assert_eq!(vec!['a', 'a'], res.unwrap());
     assert_eq!("c", input);
 }
@@ -489,7 +489,7 @@ fn repeat_success() {
 #[test]
 fn repeat_min_success() {
     let mut input = "aac";
-    let res: Result<_, ContextError> = 'a'.fab_repeat().min(2).fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab_repeat().min(2).fab(&mut input);
     assert_eq!(vec!['a', 'a'], res.unwrap());
     assert_eq!("c", input);
 }
@@ -497,7 +497,7 @@ fn repeat_min_success() {
 #[test]
 fn repeat_min_fail() {
     let mut input = "aac";
-    let res: Result<_, ContextError> = 'a'.fab_repeat().min(3).fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab_repeat().min(3).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("aac", input);
 }
@@ -505,7 +505,7 @@ fn repeat_min_fail() {
 #[test]
 fn repeat_max_success() {
     let mut input = "aac";
-    let res: Result<_, ContextError> = 'a'.fab_repeat().max(3).fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab_repeat().max(3).fab(&mut input);
     assert_eq!(vec!['a', 'a'], res.unwrap());
     assert_eq!("c", input);
 }
@@ -513,12 +513,12 @@ fn repeat_max_success() {
 #[test]
 fn repeat_max_fail() {
     let mut input = "aac";
-    let res: Result<_, ContextError> = 'a'.fab_repeat().max(2).fab(&mut input);
+    let res: Result<_, FabError> = 'a'.fab_repeat().max(2).fab(&mut input);
     assert!(res.is_err());
     assert_eq!("aac", input);
 }
 
-fn char_num<'a>(input: &mut &'a str) -> Result<(char, u32), ContextError> {
+fn char_num<'a>(input: &mut &'a str) -> Result<(char, u32), FabError> {
     ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10))).fab(input)
 }
 
@@ -528,11 +528,11 @@ fn reducer(map: &mut HashMap<char, u32>, val: (char, u32)) {
 #[test]
 fn repeat_reduce_hashmap_success() {
     let mut input = "a1b2c3";
-    let res: Result<_, ContextError> = char_num
+    let res: Result<_, FabError> = char_num
         .fab_repeat()
         .reduce(HashMap::new(), reducer)
         .fab(&mut input);
-    let expected_res: HashMap<char, u32> = [('a',1),('b',2),('c',3)].into_iter().collect();
+    let expected_res: HashMap<char, u32> = [('a', 1), ('b', 2), ('c', 3)].into_iter().collect();
     assert_eq!(expected_res, res.unwrap());
     assert_eq!("", input);
 }
@@ -540,11 +540,16 @@ fn repeat_reduce_hashmap_success() {
 #[test]
 fn repeat_reduce_hashmap_lambdas() {
     let mut input = "a1b2c3";
-    let res: Result<_, ContextError> = ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10)))
+    let res: Result<_, FabError> = ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10)))
         .fab_repeat()
-        .reduce(HashMap::new(), |state: &mut HashMap<char, u32>, val: (char, u32)| {state.insert(val.0, val.1);} )
+        .reduce(
+            HashMap::new(),
+            |state: &mut HashMap<char, u32>, val: (char, u32)| {
+                state.insert(val.0, val.1);
+            },
+        )
         .fab(&mut input);
-    let expected_res: HashMap<char, u32> = [('a',1),('b',2),('c',3)].into_iter().collect();
+    let expected_res: HashMap<char, u32> = [('a', 1), ('b', 2), ('c', 3)].into_iter().collect();
     assert_eq!(expected_res, res.unwrap());
     assert_eq!("", input);
 }
@@ -552,10 +557,38 @@ fn repeat_reduce_hashmap_lambdas() {
 #[test]
 fn repeat_reduce_fn_err_lambdas() {
     let mut input = "a1b2c3";
-    let res: Result<_, ContextError> = ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10)))
+    let res: Result<_, FabError> = ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10)))
         .fab_repeat()
-        .reduce(HashMap::new(), |state: &mut HashMap<char, u32>, val: (char, u32)| {None} )
+        .reduce(
+            HashMap::new(),
+            |_state: &mut HashMap<char, u32>, _val: (char, u32)| None,
+        )
         .fab(&mut input);
     assert!(res.is_err());
     assert_eq!("a1b2c3", input);
+}
+
+/**
+ * This is a failure case where the stack trace is printed. 
+ */
+#[test]
+fn test_error_trace() {
+    let mut input = "a1b2c3";
+    let res: Result<_, FabError> = ('a'..='z', ('0'..='9').fab_try_map(|c: char| c.to_digit(10)))
+        .fab_repeat()
+        .reduce(
+            HashMap::new(),
+            |state: &mut HashMap<char, u32>, val: (char, u32)| {
+                if val.0 != 'c' {
+                    state.insert(val.0, val.1);
+                    true
+                } else {
+                    false
+                }
+            },
+        )
+        .fab(&mut input);
+    assert!(res.is_err());
+    assert_eq!("a1b2c3", input);
+    res.unwrap_err().print_trace(input);
 }

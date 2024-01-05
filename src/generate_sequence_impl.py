@@ -1,3 +1,4 @@
+# A python script to generate the input to the rust Macros. I'm sorry Ferris.
 for i in range(11):
     print(f'sequence_impl!(SeqAlt{i+1}', end = "")
     for j in range(1, i+2):

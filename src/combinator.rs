@@ -9,34 +9,37 @@ pub struct ParserMap<P, I: ?Sized, M, E, F> {
     pub phantom_e: PhantomData<E>,
     pub phantom_m: PhantomData<M>,
 }
-
 pub struct ParserMapT<PType, M> {
     phantom_ptype: PhantomData<PType>,
     phantom_m: PhantomData<M>,
 }
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, F> Parser<'a, I, O, E, ParserMapT<PType, M>>
+impl<'a, P, M, I, O, E: ParserError, PType, F> Parser<'a, I, O, E, ParserMapT<PType, M>>
     for ParserMap<P, I, M, E, F>
 where
     P: Parser<'a, I, M, E, PType>,
     F: Fn(M) -> O,
+    I: ?Sized + Sequence,
 {
     fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         match self.parser.fab(input) {
             Ok(res) => Ok((self.func)(res)),
-            Err(err) => Err(err),
+            Err(mut err) => {
+                err.add_context(*input, ParserType::Map);
+                Err(err)
+            }
         }
     }
 }
-
+#[derive(Clone, Debug)]
 pub struct Try<P> {
     pub parser: P,
 }
-
 pub struct TryParser<T> {
     t: PhantomData<T>,
 }
 
-impl<'a, I: ?Sized + Sequence, O, E: ParserError, P, PType> Parser<'a, I, O, E, TryParser<PType>> for Try<P>
+impl<'a, I: ?Sized + Sequence, O, E: ParserError, P, PType> Parser<'a, I, O, E, TryParser<PType>>
+    for Try<P>
 where
     P: Parser<'a, I, Option<O>, E, PType>,
 {
@@ -49,7 +52,6 @@ where
         })
     }
 }
-
 pub struct TryResultParser<T, Err> {
     t: PhantomData<T>,
     err: PhantomData<Err>,
@@ -69,7 +71,7 @@ where
         })
     }
 }
-
+#[derive(Clone, Debug)]
 pub struct ParserTryMap<P, I: ?Sized, M, E, F> {
     pub parser: P,
     pub func: F,
@@ -98,22 +100,25 @@ where
                     E::from_parser_error(*input, ParserType::TryMap)
                 })
             }
-            Err(err) => Err(err),
+            Err(mut err) => {
+                err.add_context(checkpoint, ParserType::Map);
+                Err(err)
+            }
         }
     }
 }
-
 pub struct ParserTryMapResult<PType, M, FErr> {
     phantom_ptype: PhantomData<PType>,
     phantom_m: PhantomData<M>,
     phantom_ferr: PhantomData<FErr>,
 }
-impl<'a, P, M, I: ?Sized, O, E: ParserError, PType, FErr, F>
+impl<'a, P, M, I, O, E: ParserError, PType, FErr, F>
     Parser<'a, I, O, E, ParserTryMapResult<PType, M, FErr>> for ParserTryMap<P, I, M, E, F>
 where
     P: Parser<'a, I, M, E, PType>,
     FErr: Error + Send + Sync + 'static,
     F: Fn(M) -> Result<O, FErr>,
+    I: ?Sized + Sequence,
 {
     fn fab(&self, input: &mut &'a I) -> Result<O, E> {
         let checkpoint = *input;
@@ -125,11 +130,14 @@ where
                     E::from_external_error(*input, ParserType::TryMap, err)
                 })
             }
-            Err(err) => Err(err),
+            Err(mut err) => {
+                err.add_context(checkpoint, ParserType::Map);
+                Err(err)
+            }
         }
     }
 }
-
+#[derive(Clone, Debug)]
 pub struct Opt<P> {
     pub parser: P,
 }
@@ -146,7 +154,7 @@ where
         }
     }
 }
-
+#[derive(Clone, Debug)]
 pub struct TakeNot<P> {
     pub parser: P,
 }
@@ -181,7 +189,7 @@ where
         }
     }
 }
-
+#[derive(Clone, Debug)]
 pub struct Value<P, V, I: ?Sized, O, E> {
     pub parser: P,
     pub value: V,
@@ -202,6 +210,12 @@ where
     V: Clone,
 {
     fn fab(&self, input: &mut &'a I) -> Result<V, E> {
-        self.parser.fab(input).map(|_| self.value.clone())
+        match self.parser.fab(input) {
+            Ok(_) => Ok(self.value.clone()),
+            Err(mut err) => {
+                err.add_context(*input, ParserType::Map);
+                Err(err)
+            }
+        }
     }
 }

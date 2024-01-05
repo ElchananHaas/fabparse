@@ -9,13 +9,18 @@ use crate::{sequence::Sequence, Parser, ParserError, ParserType, UnitError};
 
 /**
  * Trait for any function which can act as a try reducer.
+ * Acc: The type of the accumulator
+ * T: The type of the values that will be accumulated
+ * FType: A dummy parameter used for disambiguating trait implementations.
+ * You can use any struct defined with your crate.
+ * FErr: The error type of the accumutation function.
  */
-trait AsTryReducer<Acc, T, FType, FErr> {
+pub trait TryReducer<Acc, T, FType, FErr> {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), FErr>;
 }
 
 pub struct ResultReducer;
-impl<Acc, T, F, FErr> AsTryReducer<Acc, T, ResultReducer, FErr> for F
+impl<Acc, T, F, FErr> TryReducer<Acc, T, ResultReducer, FErr> for F
 where
     F: Fn(&mut Acc, T) -> Result<(), FErr>,
 {
@@ -24,16 +29,16 @@ where
     }
 }
 pub struct OptionReducer();
-impl<Acc, T, F> AsTryReducer<Acc, T, OptionReducer, UnitError> for F
+impl<Acc, T, F> TryReducer<Acc, T, OptionReducer, UnitError> for F
 where
     F: Fn(&mut Acc, T) -> Option<()>,
 {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), UnitError> {
-        self(acc, val).ok_or(UnitError).map(|_|())
+        self(acc, val).ok_or(UnitError).map(|_| ())
     }
 }
 pub struct BoolReducer;
-impl<Acc, T, F> AsTryReducer<Acc, T, BoolReducer, UnitError> for F
+impl<Acc, T, F> TryReducer<Acc, T, BoolReducer, UnitError> for F
 where
     F: Fn(&mut Acc, T) -> bool,
 {
@@ -47,12 +52,12 @@ where
 }
 
 pub struct InfallibleReducer;
-impl<Acc, T, F> AsTryReducer<Acc, T, InfallibleReducer, Infallible> for F
+impl<Acc, T, F> TryReducer<Acc, T, InfallibleReducer, Infallible> for F
 where
     F: Fn(&mut Acc, T) -> (),
 {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), Infallible> {
-        Ok(self(acc, val)).map(|_|())
+        Ok(self(acc, val)).map(|_| ())
     }
 }
 pub struct Reducer<F, Acc: Clone> {
@@ -122,7 +127,7 @@ where
     P: Parser<'a, I, O, E, PType>,
     Acc: Clone,
     FErr: 'static + Send + Sync + Error,
-    F: AsTryReducer<Acc, O, ReducerOut, FErr>,
+    F: TryReducer<Acc, O, ReducerOut, FErr>,
 {
     fn fab(&self, input: &mut &'a I) -> Result<Acc, E> {
         let mut res = self.reducer.acc.clone();
@@ -135,6 +140,9 @@ where
                 *input = orig_input;
                 return Err(E::from_parser_error(*input, ParserType::Repeat));
             }
+            //This will be used if the try reduce fails to get a 
+            //correct location of where the parser started.
+            let loc_before_iteration = *input;
             match self.parser.fab(input) {
                 //The parser succeeded, accumulate its output and continue parsing
                 Ok(val) => {
@@ -152,8 +160,12 @@ where
                     //The reduce operation can fail, so we need an if let for that case. It accumuates
                     //results by mutable reference, so there is no need for anything in the Ok case.
                     if let Err(err) = self.reducer.reduce_fn.try_reduce(&mut res, val) {
+                        let mut err = E::from_external_error(loc_before_iteration, ParserType::Repeat, err);
                         *input = orig_input;
-                        return Err(E::from_external_error(*input, ParserType::Repeat, err));
+                        //Since the repeat error can occur anywhere in the sequence, add the
+                        //start of the repeat to the context.
+                        err.add_context(orig_input, ParserType::Repeat);
+                        return Err(err);
                     }
                 }
                 Err(_) => {
