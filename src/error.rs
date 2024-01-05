@@ -131,7 +131,9 @@ impl ParserError for FabError {
         })
     }
 }
-
+/**
+ * Gets a slice of window elements from the start of the sequence
+ */
 fn get_from_start<I: ?Sized + Sequence>(input: &I, window: usize) -> &I {
     let mut current_start = input;
     for _ in 0..window {
@@ -147,7 +149,9 @@ fn get_from_start<I: ?Sized + Sequence>(input: &I, window: usize) -> &I {
         .expect("Get from start found a valid split.")
         .0
 }
-
+/**
+ * Gets a slice of windoe elements from the end of the sequence.
+ */
 fn get_from_end<I: ?Sized + Sequence>(input: &I, window: usize) -> &I {
     let mut end_index = input.len();
     let mut count = 0;
@@ -159,7 +163,7 @@ fn get_from_end<I: ?Sized + Sequence>(input: &I, window: usize) -> &I {
     }
     input
         .try_split_at(end_index)
-        .expect("Get from start found a valid split.")
+        .expect("Get from end found a valid split.")
         .1
 }
 /**
