@@ -8,15 +8,16 @@ mod sequence;
 mod tag;
 
 use std::{
-    error::Error,
-    fmt::{Debug, Display},
+    fmt::Debug,
     marker::PhantomData,
 };
 
 use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Try, Value};
 pub use error::FabError;
 pub use error::ParserError;
+pub use error::UnitParserError;
 pub use repeat::TryReducer;
+pub use repeat::TryReducerFailed;
 use repeat::{Reducer, Repeat};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -33,16 +34,7 @@ pub enum ParserType {
     Permutation,
 }
 
-//An error that carries no other information.
-#[derive(Clone, Debug, Copy)]
-pub struct UnitError;
-impl Display for UnitError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("UnitError")
-    }
-}
 
-impl Error for UnitError {}
 pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     /**
      * Parses the input. This method advances the input reference to the remaining

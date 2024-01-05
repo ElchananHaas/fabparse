@@ -2,10 +2,22 @@ use std::{
     convert::Infallible,
     error::Error,
     marker::PhantomData,
-    ops::{Range, RangeBounds},
+    ops::{Range, RangeBounds}, fmt::Display,
 };
 
-use crate::{sequence::Sequence, Parser, ParserError, ParserType, UnitError};
+use crate::{sequence::Sequence, Parser, ParserError, ParserType};
+
+
+//An error that carries no other information.
+#[derive(Clone, Debug, Copy)]
+pub struct TryReducerFailed;
+impl Display for TryReducerFailed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("TryReducerFailed")
+    }
+}
+
+impl Error for TryReducerFailed {}
 
 /**
  * Trait for any function which can act as a try reducer.
@@ -29,24 +41,24 @@ where
     }
 }
 pub struct OptionReducer();
-impl<Acc, T, F> TryReducer<Acc, T, OptionReducer, UnitError> for F
+impl<Acc, T, F> TryReducer<Acc, T, OptionReducer, TryReducerFailed> for F
 where
     F: Fn(&mut Acc, T) -> Option<()>,
 {
-    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), UnitError> {
-        self(acc, val).ok_or(UnitError).map(|_| ())
+    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), TryReducerFailed> {
+        self(acc, val).ok_or(TryReducerFailed).map(|_| ())
     }
 }
 pub struct BoolReducer;
-impl<Acc, T, F> TryReducer<Acc, T, BoolReducer, UnitError> for F
+impl<Acc, T, F> TryReducer<Acc, T, BoolReducer, TryReducerFailed> for F
 where
     F: Fn(&mut Acc, T) -> bool,
 {
-    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), UnitError> {
+    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), TryReducerFailed> {
         if self(acc, val) {
             Ok(())
         } else {
-            Err(UnitError)
+            Err(TryReducerFailed)
         }
     }
 }

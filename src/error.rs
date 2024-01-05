@@ -38,13 +38,23 @@ pub struct LocatedError {
     location: usize,
     parser_type: ParserType,
 }
+#[derive(Debug)]
+pub struct UnitParserError;
+impl Display for UnitParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("UnitParserError")
+    }
+}
+impl Error for UnitParserError{
 
+}
 /**
- * If you don't care about the errors, and want speed, the unit type implements ParserError
+ * If you don't care about the errors, and want speed, this type implements ParserError. 
+ * It contains no information.
  */
-impl ParserError for () {
+impl ParserError for UnitParserError {
     fn from_parser_error<T: ?Sized + Sequence>(_input: *const T, _parser_type: ParserType) -> Self {
-        ()
+        UnitParserError
     }
 
     fn from_external_error<T: ?Sized, E: Error + Send + Sync + 'static>(
@@ -52,7 +62,7 @@ impl ParserError for () {
         _parser_type: ParserType,
         _cause: E,
     ) -> Self {
-        ()
+        UnitParserError
     }
 }
 
@@ -63,7 +73,21 @@ pub struct FabError {
     pub stack: SmallVec<[LocatedError; 1]>,
     pub cause: Option<Box<dyn Error>>,
 }
-
+/**
+ * This is the default error for Fabparse. 
+ * It has a method print_trace(input) which prints a stack trace of 
+ * the parser error, with context. An example trace on input "a1b2c3" is: 
+ * 
+ * Location [""]^["a1b2c3"] from parser Repeat
+ * Location ["a1b2"]^["c3"] from parser Repeat
+ * From cause [TryReducerFailed]
+ * 
+ * This method requires that you pass in the input of the parser. 
+ * If you don't the method may panic or print and incorrect stack trace. 
+ * 
+ * This also has a method print_trace_window(input, window_size)
+ * which controls how much context is printed. By default, it will be 10 chars/items
+ */
 impl Display for FabError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
