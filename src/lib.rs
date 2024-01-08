@@ -2,7 +2,7 @@
 
 mod branch;
 mod combinator;
-pub mod error;
+mod error;
 mod repeat;
 mod sequence;
 mod tag;
@@ -15,11 +15,14 @@ use std::{
 use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Try, Value};
 pub use error::FabError;
 pub use error::ParserError;
-pub use error::UnitParserError;
+pub use error::NoContextFabError;
 pub use repeat::TryReducer;
-pub use repeat::TryReducerFailed;
+pub use repeat::TryReducerError;
 use repeat::{Reducer, Repeat};
-
+/**
+ * This enum represents the kinds of parsers in Fabparse. This is used in errors to 
+ * identify the parser that failed.
+ */
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ParserType {
     Tag,
@@ -117,7 +120,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
      * max(usize). Sets an exclusive upper bound of the maximum number of repetitions of the parser for it to succeed.
      * If it would exceed this number, it fails.
      *
-     * bound(impl RangeBounds<usize>). Takes in any range type. repeat.bound(min..max) is equivilent to calling repeat.min(min).max(max)
+     * `bound(impl RangeBounds<usize>)`. Takes in any range type. repeat.bound(min..max) is equivilent to calling repeat.min(min).max(max)
      * This method can also accept min..=max, min.., ..=max, and ..
      *
      * reduce(acc, fn(&mut acc, O) -> ()) where O is the output type of the underlying parser.

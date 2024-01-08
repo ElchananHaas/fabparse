@@ -8,24 +8,38 @@ use std::{
 use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 
 
-//An error that carries no other information.
+/**
+ * Repeat parser can be optimized with a custom try reduce function.
+ * This error will be used for reducers that return Option<()> or 
+ * bool. 
+ * 
+ * Reducers that return Result<(),E> will use the E from the result, 
+ * and reducers that return () will never fail.
+ */
 #[derive(Clone, Debug, Copy)]
-pub struct TryReducerFailed;
-impl Display for TryReducerFailed {
+pub struct TryReducerError;
+impl Display for TryReducerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("TryReducerFailed")
     }
 }
 
-impl Error for TryReducerFailed {}
+impl Error for TryReducerError {}
 
 /**
- * Trait for any function which can act as a try reducer.
- * Acc: The type of the accumulator
- * T: The type of the values that will be accumulated
- * FType: A dummy parameter used for disambiguating trait implementations.
+ * Repeat parsers by default return a Vec. This behavior can be replaced with 
+ * with the method `parser.reduce(acc, fn)`, where accumulator implements
+ * TryReducer. This trait is already implemented for all of `[fn(&mut acc)->(),
+ * fn(&mut acc)->Option<()>, fn(&mut acc)->bool, fn(&mut acc)->Result<(),E> ]`
+ * 
+ * `Acc`: The type of the accumulator
+ * 
+ * `T`: The type of the values that will be accumulated
+ * 
+ * `FType`: A dummy parameter used for disambiguating trait implementations.
  * You can use any struct defined with your crate.
- * FErr: The error type of the accumutation function.
+ * 
+ * `FErr`: The error type of the accumutation function.
  */
 pub trait TryReducer<Acc, T, FType, FErr> {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), FErr>;
@@ -41,24 +55,24 @@ where
     }
 }
 pub struct OptionReducer();
-impl<Acc, T, F> TryReducer<Acc, T, OptionReducer, TryReducerFailed> for F
+impl<Acc, T, F> TryReducer<Acc, T, OptionReducer, TryReducerError> for F
 where
     F: Fn(&mut Acc, T) -> Option<()>,
 {
-    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), TryReducerFailed> {
-        self(acc, val).ok_or(TryReducerFailed).map(|_| ())
+    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), TryReducerError> {
+        self(acc, val).ok_or(TryReducerError).map(|_| ())
     }
 }
 pub struct BoolReducer;
-impl<Acc, T, F> TryReducer<Acc, T, BoolReducer, TryReducerFailed> for F
+impl<Acc, T, F> TryReducer<Acc, T, BoolReducer, TryReducerError> for F
 where
     F: Fn(&mut Acc, T) -> bool,
 {
-    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), TryReducerFailed> {
+    fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), TryReducerError> {
         if self(acc, val) {
             Ok(())
         } else {
-            Err(TryReducerFailed)
+            Err(TryReducerError)
         }
     }
 }
