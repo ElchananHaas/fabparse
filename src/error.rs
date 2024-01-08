@@ -8,8 +8,9 @@ use smallvec::{smallvec, SmallVec};
 use crate::{sequence::Sequence, ParserType};
 
 /**
- * Trait for a parser error. Input is the location of the input as a pointer.
- * parser_type is the type of parser.
+ * Trait for a parser error. This can store information about the type of parser
+ * that generated the error and its location. This is implemented by `FabError` and 
+ * `NoContextFabError`.
  *
  * In order to simplify lifetimes used by the error, the parser error
  * stores a pointer to the location the error occured rather than a reference.

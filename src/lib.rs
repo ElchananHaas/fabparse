@@ -166,9 +166,8 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
  * input parsers succeed, with the output of the parser that succeeded.
  *
  * If none of the parsers succeed, this function will return an error.
- * When using ContextError, the error returned will be the error of the parser that made the
- * furthest progress. This behavior can only be garunteed when correct location hints are provided
- * when constructing ContextErrors. When using a parser that doesn't provide error locations, or in the event
+ * When using `FabError`, the error returned will be the error of the parser that made the
+ * furthest progress. When using a parser that doesn't provide error locations, or in the event
  * of ties, FunnelParse makes no garuntees as to which child parser's error will be returned.
  */
 pub fn alt<T>(parsers: T) -> branch::Alt<T> {
@@ -178,25 +177,28 @@ pub fn alt<T>(parsers: T) -> branch::Alt<T> {
 /**
  * This function takes in a tuple of 1 to 11 parsers. It returns a parser that
  * succeeds when all of the input parsers have succeeded in any order.
- * Returns a tuple of outputs from the parsers in the same order
- * that they were provided in the input.
+ * `permutation((parser_1,parser_2))` will return `(output_parser_1, output_parser_2)`,
+ * regardless of the order they succeed in.
  *
- * The parsers will be tried in the order that they are provided in the input.
+ * If none of the parsers succeed, this function will return an error.
+ * When using `FabError`, the error returned will be the error of the parser that made the
+ * furthest progress. When using a parser that doesn't provide error locations, or in the event
+ * of ties, FunnelParse makes no garuntees as to which child parser's error will be returned.
  */
 pub fn permutation<T>(parsers: T) -> branch::Permutation<T> {
     branch::Permutation(parsers)
 }
 
 /**
- * Constructs a parser that takes that many items. For strings, this
- * will be characters and for arrays it will be elements.
+ * `take(x: usize) `Constructs a parser that takes `x` items. For strings, this
+ * will be characters and for arrays it will be elements. This parser always outputs a slice.
  */
 pub fn take(count: usize) -> tag::Take {
     tag::Take(count)
 }
 
 /**
- * Makes the underlying parser optional. If the underlying parser succeeds with Ok(out),
+ * This function makes the underlying parser optional. If the underlying parser succeeds with Ok(out),
  * this parser returns Some(out). Otherwise, this parser succeeds with None and
  * consumes no input.
  */
@@ -206,7 +208,7 @@ pub fn opt<T>(parser: T) -> combinator::Opt<T> {
 /**
  * Creates a parser that takes a single item if the underlying parser fails. If the
  * underlying parser succeeds, this parser fails. For strings, on success this will take a char
- * and for arrays it will take a single item.
+ * and for arrays it will take a single item. The result will be the char/item.
  *
  * An example usage of this is take_not('a'), which will recognize any single char except for 'a'.
  */

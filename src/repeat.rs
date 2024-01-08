@@ -9,7 +9,7 @@ use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 
 
 /**
- * Repeat parser can be optimized with a custom try reduce function.
+ * Repeat parsers can be customized with a custom try reduce function, see the TryReducer trait.
  * This error will be used for reducers that return Option<()> or 
  * bool. 
  * 
@@ -91,12 +91,12 @@ pub struct Reducer<F, Acc: Clone> {
     pub reduce_fn: F,
 }
 pub struct Repeat<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> {
-    pub parser: P,
-    pub reducer: Reducer<F, Acc>,
-    pub bounds: Range<usize>,
-    pub phantom_i: PhantomData<ParI>,
-    pub phantom_o: PhantomData<ParO>,
-    pub phantom_e: PhantomData<ParE>,
+    parser: P,
+    reducer: Reducer<F, Acc>,
+    bounds: Range<usize>,
+    phantom_i: PhantomData<ParI>,
+    phantom_o: PhantomData<ParO>,
+    phantom_e: PhantomData<ParE>,
 }
 
 impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, Acc> {
