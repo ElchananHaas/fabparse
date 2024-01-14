@@ -50,7 +50,7 @@ where
     F: Fn(&mut Acc, T) -> Result<(), FErr>,
 {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), FErr> {
-        self(acc, val).map(|_| ())
+        self(acc, val)
     }
     fn finalize(&self, acc: Acc, _orig_input: &'a I, _new_input: &'a I) -> Acc {
         acc
@@ -106,7 +106,7 @@ impl<'a, T, I: ?Sized> TryReducer<'a, (), T, InputSliceReducer, Infallible, &'a 
         Ok(())
     }
     fn finalize(&self, _acc: (), orig_input: &'a I, new_input: &'a I) -> &'a I {
-        let size = new_input.len() - orig_input.len();
+        let size =  orig_input.len() - new_input.len();
         let (first, _rest) = orig_input.try_split_at(size).expect("Valid split boundary");
         first
     }
@@ -268,6 +268,9 @@ impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, 
             std::ops::Bound::Unbounded => usize::MAX,
         };
         Repeat::new(self.parser, self.reducer, lower..upper)
+    }
+    pub fn as_input_slice(self) -> Repeat<P, ParI, ParO, ParE, InputSliceReducer, ()> {
+        Repeat::new(self.parser, Reducer { acc: (), reduce_operator: InputSliceReducer }, self.bounds)
     }
     /**
      * By default this parser will output a vec. This method allows that to be replaced

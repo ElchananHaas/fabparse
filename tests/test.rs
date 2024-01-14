@@ -523,3 +523,11 @@ fn test_error_trace() {
     assert_eq!("a1b2c3", input);
     res.unwrap_err().print_trace(input);
 }
+
+#[test]
+fn repeat_as_input_slice() {
+    let mut input = "aac";
+    let res: Result<_, FabError> = 'a'.fab_repeat().as_input_slice().fab(&mut input);
+    assert_eq!("aa", res.unwrap());
+    assert_eq!("c", input);
+}
