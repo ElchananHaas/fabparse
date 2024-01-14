@@ -109,9 +109,7 @@ where
         Ok(())
     }
     fn finalize(&self, _acc: (), orig_input: &'a I, new_input: &'a I) -> &'a I {
-        let size = orig_input.len() - new_input.len();
-        let (first, _rest) = orig_input.try_split_at(size).expect("Valid split boundary");
-        first
+        orig_input.subtract(new_input)
     }
 }
 
