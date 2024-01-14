@@ -87,7 +87,7 @@ where
 {
     fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
         if let Some((first, rest)) = input.try_split_front() {
-            if let Some(out) = self(first.clone()) {
+            if let Some(out) = self(first) {
                 *input = rest;
                 Ok(out)
             } else {
@@ -110,7 +110,7 @@ where
 {
     fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
         if let Some((first, rest)) = input.try_split_front() {
-            match self(first.clone()) {
+            match self(first) {
                 Ok(out) => {
                     *input = rest;
                     Ok(out)

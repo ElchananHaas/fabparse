@@ -1,11 +1,11 @@
 //! > Fabparse. A minimized parser combinator library.
 //!  
-//! Fabparse is a minimized trait based parser combinator library. Most of the 
+//! Fabparse is a minimized trait based parser combinator library. Most of the
 //! functionality is within the [`Parser`] trait. Fabparse implements the parser trait
 //! for a wide variety of types. It restricts itself to a few powerful and composable operations.
-//! 
+//!
 //! All of these are parsers.
-//! 
+//!
 //!| Parser | Input | Parsing |Output | Input after parsing|
 //!| - | - | - | - | - |
 //!| `'a'` | `let mut input = "abc"` | `'a'.fab(&mut input)` | `'a'` | `"bc"`|
@@ -15,27 +15,26 @@
 //!| `('a'..='z')` | `let mut input = "zyx"` | `('a'..='z').fab(&mut input)` | `z` | `"yx"`|
 //!| [`take`]`(2)` | `let mut input =  "abc"` | `take(2).fab(&mut input)` | `"ab"` | `"c"`|
 //!| `❘c❘ c=='m'` | `let mut input = "moo"` | `(❘c❘ c=='m').fab(&mut input)` | `'m'` | `"oo"`|
-//!| [`char::is_ascii_digit`] | `let mut input = "123"` | `char::is_ascii_digit.fab(&mut input)` | `'1'` | `"23"`|
 //!| `let parser = ❘c: char❘ if c=='m' {Some(5)} else {None}` | `let mut input = "moo"` | `parser.fab(&mut input)` | `5` | `"oo"`|
 //!| `let parser = ❘c: char❘ if c=='m' {Ok(5)} else {Err(ErrType)}` | `let mut input = "moo"` | `parser.fab(&mut input)` | `5` | `"oo"`|
-//! 
-//! 
-//! 
+//!
+//!
+//!
 //! Custom functions can also be parsers.
-//! 
+//!
 //! `
 //! fn is_it_a(input: &mut &str) -> Result<char, FabError> {
 //!     'a'.fab(input)
 //! }
 //! `
-//! 
+//!
 //!| Parser | Input | Parsing |Output | Input after parsing|
 //!| - | - | - | - | - |
 //!| `is_it_a` | `let mut input = "abc"` | `is_it_a.fab(&mut input)` | `'a'` | `"bc"`|
-//! 
-//! These parsers can be modified through the methods available 
-//! in the [`Parser`] trait. 
-//! 
+//!
+//! These parsers can be modified through the methods available
+//! in the [`Parser`] trait.
+//!
 //!| Parser | Input | Parsing |Output | Input after parsing|
 //!| - | - | - | - | - |
 //!| `let parser = 'a'.fab_value(5)` | `let mut input = "abc"` | `parser.fab(&mut input)` | `5` | `"bc"`|
@@ -46,14 +45,14 @@
 //!| `let parser = 'a'.fab_repeat()` | `let mut input = "bbbb"` | `parser.fab(&mut input)` | `vec[]` | `"bbbb"`|
 //!| `let parser = 'a'.fab_repeat().as_input_slice()` | `let mut input = "aabb"` | `parser.fab(&mut input)` | `"aa"` | `"bb"`|
 //!| `let parser = 'a'.fab_repeat().min(1)` | `let mut input = "bbbb"` | `parser.fab(&mut input)` | `FabError(...)` | `"bbbb"`|
-//! 
+//!
 //! fab_try_map works both with functions that return Results and ones that return Options.
-//! 
+//!
 //! The [`Repeat`] struct has additional method for customization trait. These include setting a maximum
 //! number of items to parse, or outputting a custom data structure.
-//! 
-//! These parsers can be combined with these methods. 
-//! 
+//!
+//! These parsers can be combined with these methods.
+//!
 //!| Parser | Input | Parsing |Output | Input after parsing|
 //!| - | - | - | - | - |
 //!| `alt('a','b')` | `let mut input = "abc"` | `alt('a','b').fab(&mut input)` | `a` | `"bc"`|
@@ -63,7 +62,7 @@
 //!| `opt('a')` | `let mut input = "cab"` | `opt('a').fab(&mut input)` | `None` | `"cab"`|
 //!| `take_not('a')` | `let mut input = "cab"` | `take_not('a').fab(&mut input)` | `'c'` | `"ab"`|
 //!| `take_not('a')` | `let mut input = "abc"` | `take_not('a').fab(&mut input)` | `FabError(...)` | `"abc"`|
-//! 
+//!
 //! Some code is inspired by Winnow by Elliot Page + other contributors.
 
 #[doc(hidden)]
@@ -80,21 +79,18 @@ pub mod sequence;
 pub mod tag;
 pub mod util;
 
-use std::{
-    fmt::Debug,
-    marker::PhantomData,
-};
+use std::{fmt::Debug, marker::PhantomData};
 
 use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Value};
 pub use error::FabError;
-pub use error::ParserError;
 pub use error::NoContextFabError;
+pub use error::ParserError;
+use repeat::Reducer;
+pub use repeat::Repeat;
 pub use repeat::TryReducer;
 pub use repeat::TryReducerError;
-pub use repeat::Repeat;
-use repeat::Reducer;
 /**
- * This enum represents the kinds of parsers in Fabparse. This is used in errors to 
+ * This enum represents the kinds of parsers in Fabparse. This is used in errors to
  * identify the parser that failed.
  */
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -111,7 +107,6 @@ pub enum ParserType {
     Sequence,
     Permutation,
 }
-
 
 pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     /**
@@ -154,7 +149,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     }
     /**
      * This parser first maps the input, and if the result is Option::Some or Result::Ok,
-     * it unwraps the input. Othewise, the parser fails. 
+     * it unwraps the input. Othewise, the parser fails.
      *
      */
     fn fab_try_map<F>(self, func: F) -> ParserTryMap<Self, I, O, E, F>
@@ -174,7 +169,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
      * parser will accept any number of repetitions, including 0.
      *
      * The repeat method has some methods to modify its behavior, which can be composed with each other. See the
-     * [`Repeat`] struct for these emthods. 
+     * [`Repeat`] struct for these emthods.
      *
      */
     fn fab_repeat(self) -> Repeat<Self, I, O, E, fn(&mut Vec<O>, O) -> (), Vec<O>>

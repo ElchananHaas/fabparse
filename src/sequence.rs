@@ -21,6 +21,15 @@ pub trait Sequence {
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
+    /**
+     * Subtracts off a later part of the sequence. Useful for extracting 
+     * slices of the input.
+     */
+    fn subtract<T: ?Sized>(&self, other: &T) -> &Self 
+    where T: Sequence<Item = Self::Item> {
+        let len = self.len() - other.len();
+        self.try_split_at(len).expect("Successful split").0
+    }
 }
 
 impl<T: Clone> Sequence for [T] {

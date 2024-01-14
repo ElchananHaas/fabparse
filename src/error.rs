@@ -9,7 +9,7 @@ use crate::{sequence::Sequence, ParserType};
 
 /**
  * Trait for a parser error. This can store information about the type of parser
- * that generated the error and its location. This is implemented by `FabError` and 
+ * that generated the error and its location. This is implemented by `FabError` and
  * `NoContextFabError`.
  *
  * In order to simplify lifetimes used by the error, the parser error
@@ -39,9 +39,9 @@ struct LocatedError {
     parser_type: ParserType,
 }
 /**
- * This error type has the FabError trait implemented for it, 
- * but contains no information about the location of the error or 
- * the parser that generated it. Use this error for maximum speed at 
+ * This error type has the FabError trait implemented for it,
+ * but contains no information about the location of the error or
+ * the parser that generated it. Use this error for maximum speed at
  * the cost of debugability. Use FabError for better debugging.
  */
 #[derive(Debug, Clone)]
@@ -51,11 +51,9 @@ impl Display for NoContextFabError {
         f.write_str("UnitParserError")
     }
 }
-impl Error for NoContextFabError{
-
-}
+impl Error for NoContextFabError {}
 /**
- * If you don't care about the errors, and want speed, this type implements ParserError. 
+ * If you don't care about the errors, and want speed, this type implements ParserError.
  * It contains no information.
  */
 impl ParserError for NoContextFabError {
@@ -75,17 +73,17 @@ impl ParserError for NoContextFabError {
 /**
  * This is the recommended error type for Fabparse. This can be pretty-printed with the method
  * `print_trace(input)`, which will print a stack trace of the parsers with
- * some surrounding context. An example is: 
- * 
- * 
+ * some surrounding context. An example is:
+ *
+ *
  * Location \[""\]^[\"a1b2c3\"] from parser Repeat
- * 
+ *
  * Location \["a1b2"\]^\["c3"\] from parser RepeatIter
- * 
+ *
  * From cause \[TryReducerFailed\]
- * 
+ *
  * There is also a `print_trace_window(input)` method that lets you customize
- * the context window. The default is currently 10, but Fabparse reserves the 
+ * the context window. The default is currently 10, but Fabparse reserves the
  * right to increase this.
  */
 #[derive(Debug)]
@@ -96,19 +94,19 @@ pub struct FabError {
     cause: Option<Box<dyn Error>>,
 }
 /**
- * This is the default error for Fabparse. 
- * It has a method print_trace(input) which prints a stack trace of 
- * the parser error, with context. An example trace on input "a1b2c3" is: 
- * 
+ * This is the default error for Fabparse.
+ * It has a method print_trace(input) which prints a stack trace of
+ * the parser error, with context. An example trace on input "a1b2c3" is:
+ *
  * Location \[""\]^[\"a1b2c3\"] from parser Repeat
- * 
+ *
  * Location \["a1b2"\]^\["c3"\] from parser Repeat
- * 
+ *
  * From cause \[TryReducerFailed\]
- * 
- * This method requires that you pass in the input that generated the error. 
+ *
+ * This method requires that you pass in the input that generated the error.
  * If you don't the method may panic or print an incorrect stack trace.
- * 
+ *
  * This error type also has a method print_trace_window(input, window_size)
  * which controls how much context is printed. By default, it will be 10 chars or items
  */

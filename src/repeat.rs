@@ -1,17 +1,18 @@
 use std::{
-    convert::Infallible, 
+    convert::Infallible,
     error::Error,
+    fmt::Display,
     marker::PhantomData,
-    ops::{Range, RangeBounds}, fmt::Display,
+    ops::{Range, RangeBounds},
 };
 
 use crate::{sequence::Sequence, Parser, ParserError, ParserType};
 /**
  * Repeat parsers can be customized with a custom try reduce function, see the TryReducer trait.
- * This error will be used for reducers that return Option<()> or 
- * bool. 
- * 
- * Reducers that return Result<(),E> will use the E from the result, 
+ * This error will be used for reducers that return Option<()> or
+ * bool.
+ *
+ * Reducers that return Result<(),E> will use the E from the result,
  * and reducers that return () will never fail.
  */
 #[derive(Clone, Debug, Copy)]
@@ -25,18 +26,18 @@ impl Display for TryReducerError {
 impl Error for TryReducerError {}
 
 /**
- * Repeat parsers by default return a Vec. This behavior can be replaced with 
+ * Repeat parsers by default return a Vec. This behavior can be replaced with
  * with the method `parser.reduce(acc, fn)`, where accumulator implements
  * TryReducer. This trait is already implemented for all of `[fn(&mut acc)->(),
  * fn(&mut acc)->Option<()>, fn(&mut acc)->bool, fn(&mut acc)->Result<(),E> ]`
- * 
+ *
  * `Acc`: The type of the accumulator
- * 
+ *
  * `T`: The type of the values that will be accumulated
- * 
+ *
  * `FType`: A dummy parameter used for disambiguating trait implementations.
  * You can use any struct defined with your crate.
- * 
+ *
  * `FErr`: The error type of the accumutation function.
  */
 pub trait TryReducer<'a, Acc, T, FType, FErr, Out, I: ?Sized> {
@@ -99,14 +100,16 @@ where
 }
 
 pub struct InputSliceReducer;
-impl<'a, T, I: ?Sized> TryReducer<'a, (), T, InputSliceReducer, Infallible, &'a I, I> for InputSliceReducer
-    where I: Sequence
+impl<'a, T, I: ?Sized> TryReducer<'a, (), T, InputSliceReducer, Infallible, &'a I, I>
+    for InputSliceReducer
+where
+    I: Sequence,
 {
     fn try_reduce(&self, _acc: &mut (), _val: T) -> Result<(), Infallible> {
         Ok(())
     }
     fn finalize(&self, _acc: (), orig_input: &'a I, new_input: &'a I) -> &'a I {
-        let size =  orig_input.len() - new_input.len();
+        let size = orig_input.len() - new_input.len();
         let (first, _rest) = orig_input.try_split_at(size).expect("Valid split boundary");
         first
     }
@@ -117,8 +120,8 @@ pub struct Reducer<Reduce, Acc: Clone> {
     pub reduce_operator: Reduce,
 }
 /**
- * This struct can be constructed through the method `fab_repeat` on any parser. 
- * It can be customized with a min/max number of repititions, or a custom 
+ * This struct can be constructed through the method `fab_repeat` on any parser.
+ * It can be customized with a min/max number of repititions, or a custom
  * try reduce.
  */
 pub struct Repeat<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> {
@@ -183,9 +186,12 @@ where
         loop {
             // Break out of the loop early if we hit the repetition limit.
             if repetitions == self.bounds.end - 1 {
-                return Ok(self.reducer.reduce_operator.finalize(res, orig_input, input));
+                return Ok(self
+                    .reducer
+                    .reduce_operator
+                    .finalize(res, orig_input, input));
             }
-            //This will be used if the try reduce fails to get a 
+            //This will be used if the try reduce fails to get a
             //correct location of where the parser started.
             let loc_before_iteration = *input;
             match self.parser.fab(input) {
@@ -193,16 +199,21 @@ where
                 Ok(val) => {
                     //We made no progress, so return an error rather than looping indefinitely
                     if loc(*input) == loc(last_location) {
-                        let mut err = E::from_parser_error(loc_before_iteration, ParserType::RepeatIter);
+                        let mut err =
+                            E::from_parser_error(loc_before_iteration, ParserType::RepeatIter);
                         *input = orig_input;
                         err.add_context(orig_input, ParserType::Repeat);
-                        return Err(err)
+                        return Err(err);
                     }
                     last_location = *input;
                     //The reduce operation can fail, so we need an if let for that case. It accumuates
                     //results by mutable reference, so there is no need for anything in the Ok case.
                     if let Err(err) = self.reducer.reduce_operator.try_reduce(&mut res, val) {
-                        let mut err = E::from_external_error(loc_before_iteration, ParserType::RepeatIter, err);
+                        let mut err = E::from_external_error(
+                            loc_before_iteration,
+                            ParserType::RepeatIter,
+                            err,
+                        );
                         *input = orig_input;
                         //Since the repeat error can occur anywhere in the sequence, add the
                         //start of the repeat to the context.
@@ -213,7 +224,10 @@ where
                 Err(_) => {
                     //The underlying parser failed, so return the results up to here.
                     if self.bounds.contains(&repetitions) {
-                        return Ok(self.reducer.reduce_operator.finalize(res, orig_input, input));
+                        return Ok(self
+                            .reducer
+                            .reduce_operator
+                            .finalize(res, orig_input, input));
                     } else {
                         *input = orig_input;
                         return Err(E::from_parser_error(*input, ParserType::Repeat));
@@ -273,14 +287,21 @@ impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, 
      * Returns the slice of the input that this parser matched. &str when parsing &str, &\[T\] when parsing  &\[T\]
      */
     pub fn as_input_slice(self) -> Repeat<P, ParI, ParO, ParE, InputSliceReducer, ()> {
-        Repeat::new(self.parser, Reducer { acc: (), reduce_operator: InputSliceReducer }, self.bounds)
+        Repeat::new(
+            self.parser,
+            Reducer {
+                acc: (),
+                reduce_operator: InputSliceReducer,
+            },
+            self.bounds,
+        )
     }
     /**
      * By default this parser will output a vec. This method allows that to be replaced
-     * with a custom type to costruct HashMaps or other custom output types. 
-     * This method takes in `acc`, the accumulator base case and `reduce_fn` the 
+     * with a custom type to costruct HashMaps or other custom output types.
+     * This method takes in `acc`, the accumulator base case and `reduce_fn` the
      * custom try reduce function. `reduce_fn` can be of the form
-     * `fn(&mut acc)->()` if it always succeeds. If if can fail, it can 
+     * `fn(&mut acc)->()` if it always succeeds. If if can fail, it can
      * be of the forms `[fn(&mut acc)->Option<()>, fn(&mut acc)->bool, fn(&mut acc)->Result<(),E> ]`
      * It can also be a custom struct that implements the TryReducer trait.
      */
@@ -289,6 +310,13 @@ impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, 
         acc: NewAcc,
         reduce_fn: NewF,
     ) -> Repeat<P, ParI, ParO, ParE, NewF, NewAcc> {
-        Repeat::new(self.parser, Reducer { acc, reduce_operator: reduce_fn }, self.bounds)
+        Repeat::new(
+            self.parser,
+            Reducer {
+                acc,
+                reduce_operator: reduce_fn,
+            },
+            self.bounds,
+        )
     }
 }
