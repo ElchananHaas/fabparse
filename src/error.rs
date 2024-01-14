@@ -77,9 +77,10 @@ impl ParserError for NoContextFabError {
  * `print_trace(input)`, which will print a stack trace of the parsers with
  * some surrounding context. An example is: 
  * 
+ * 
  * Location \[""\]^[\"a1b2c3\"] from parser Repeat
  * 
- * Location \["a1b2"\]^\["c3"\] from parser Repeat
+ * Location \["a1b2"\]^\["c3"\] from parser RepeatIter
  * 
  * From cause \[TryReducerFailed\]
  * 

@@ -501,7 +501,7 @@ fn repeat_reduce_fn_err_lambdas() {
 
 /**
  * This is a failure case where the stack trace is printed. 
- */
+ */ 
 #[test]
 fn test_error_trace() {
     let mut input = "a1b2c3";
