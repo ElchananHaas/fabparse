@@ -3,7 +3,7 @@ use crate::{opt, sequence::Sequence, Parser, ParserError};
 pub fn num_unsigned<'a, E: ParserError>(input: &mut &'a str) -> Result<&'a str, E>
 where
 {
-    (|c: char| c.is_ascii_digit())
+    char::is_ascii_digit
         .fab_repeat()
         .as_input_slice()
         .fab(input)

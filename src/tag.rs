@@ -77,6 +77,28 @@ where
     }
 }
 
+pub struct FnBoolRefSeqParser;
+impl<'a, I, F, E, Item> Parser<'a, I, Item, E, FnBoolRefSeqParser> for F
+where
+    I: ?Sized + Sequence<Item = Item>,
+    F: Fn(&Item) -> bool,
+    E: ParserError,
+    Item: Clone,
+{
+    fn fab(&self, input: &mut &'a I) -> Result<Item, E> {
+        if let Some((first, rest)) = input.try_split_front() {
+            if self(&first) {
+                *input = rest;
+                Ok(first)
+            } else {
+                Err(E::from_parser_error(*input, ParserType::Tag))
+            }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
 pub struct FnOptionSeqParser;
 impl<'a, I, F, E, Item, FnOut> Parser<'a, I, FnOut, E, FnOptionSeqParser> for F
 where
@@ -88,6 +110,28 @@ where
     fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
         if let Some((first, rest)) = input.try_split_front() {
             if let Some(out) = self(first) {
+                *input = rest;
+                Ok(out)
+            } else {
+                Err(E::from_parser_error(*input, ParserType::Tag))
+            }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
+pub struct FnOptionRefSeqParser;
+impl<'a, I, F, E, Item, FnOut> Parser<'a, I, FnOut, E, FnOptionRefSeqParser> for F
+where
+    I: ?Sized + Sequence<Item = Item>,
+    F: Fn(&Item) -> Option<FnOut>,
+    E: ParserError,
+    Item: Clone,
+{
+    fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
+        if let Some((first, rest)) = input.try_split_front() {
+            if let Some(out) = self(&first) {
                 *input = rest;
                 Ok(out)
             } else {
@@ -111,6 +155,30 @@ where
     fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
         if let Some((first, rest)) = input.try_split_front() {
             match self(first) {
+                Ok(out) => {
+                    *input = rest;
+                    Ok(out)
+                }
+                Err(err) => Err(E::from_external_error(*input, ParserType::Tag, err)),
+            }
+        } else {
+            Err(E::from_parser_error(*input, ParserType::Tag))
+        }
+    }
+}
+
+pub struct FnResultRefSeqParser;
+impl<'a, I, F, E, Item, FnOut, FnErr> Parser<'a, I, FnOut, E, FnResultRefSeqParser> for F
+where
+    I: ?Sized + Sequence<Item = Item>,
+    F: Fn(&Item) -> Result<FnOut, FnErr>,
+    E: ParserError,
+    Item: Clone,
+    FnErr: 'static + Error + Send + Sync,
+{
+    fn fab(&self, input: &mut &'a I) -> Result<FnOut, E> {
+        if let Some((first, rest)) = input.try_split_front() {
+            match self(&first) {
                 Ok(out) => {
                     *input = rest;
                     Ok(out)
