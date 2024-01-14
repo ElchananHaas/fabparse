@@ -2,21 +2,24 @@
 //!  
 //! Fabparse is a minimized trait based parser combinator library. Most of the 
 //! functionality is within the [`Parser`] trait. Fabparse implements the parser trait
-//! for a wide variety of types, rather than have different methods for each type. 
-//! It restricts itself to a few powerful and composable operations.
+//! for a wide variety of types. It restricts itself to a few powerful and composable operations.
 //! 
 //! All of these are parsers.
 //! 
 //!| Parser | Input | Parsing |Output | Input after parsing|
 //!| - | - | - | - | - |
 //!| `'a'` | `let mut input = "abc"` | `'a'.fab(&mut input)` | `'a'` | `"bc"`|
+//!| `'a'` | `let mut input = "def"` | `'a'.fab(&mut input)` | `FabError(...)` | `"def"`|
 //!| `"abc"` | `let mut input = "abcdef"` | `"abc".fab(&mut input)` | `"abc"` | `"def"`|
-//!| `[1, 2]` | `let mut input =  [1, 2, 3].as_slice()` | `[1, 2].fab(&mut input)` | `[1, 2]` | `[3]`|
+//!| `[1, 2]` | `let mut input =  "[1, 2, 3].as_slice()"` | `[1, 2].fab(&mut input)` | `[1, 2]` | `[3]`|
 //!| `('a'..='z')` | `let mut input = "zyx"` | `('a'..='z').fab(&mut input)` | `z` | `"yx"`|
+//!| [`take`]`(2)` | `let mut input =  "abc"` | `take(2).fab(&mut input)` | `"ab"` | `"c"`|
 //!| `❘c❘ c=='m'` | `let mut input = "moo"` | `(❘c❘ c=='m').fab(&mut input)` | `'m'` | `"oo"`|
 //!| [`char::is_ascii_digit`] | `let mut input = "123"` | `char::is_ascii_digit.fab(&mut input)` | `'1'` | `"23"`|
 //!| `let parser = ❘c: char❘ if c=='m' {Some(5)} else {None}` | `let mut input = "moo"` | `parser.fab(&mut input)` | `5` | `"oo"`|
 //!| `let parser = ❘c: char❘ if c=='m' {Ok(5)} else {Err(ErrType)}` | `let mut input = "moo"` | `parser.fab(&mut input)` | `5` | `"oo"`|
+//! 
+//! 
 //! 
 //! Custom functions can also be parsers.
 //! 
@@ -30,13 +33,35 @@
 //!| - | - | - | - | - |
 //!| `is_it_a` | `let mut input = "abc"` | `is_it_a.fab(&mut input)` | `'a'` | `"bc"`|
 //! 
-//! These parsers can be modified and combined through the methods available 
+//! These parsers can be modified through the methods available 
 //! in the [`Parser`] trait. 
 //! 
 //!| Parser | Input | Parsing |Output | Input after parsing|
 //!| - | - | - | - | - |
 //!| `let parser = 'a'.fab_value(5)` | `let mut input = "abc"` | `parser.fab(&mut input)` | `5` | `"bc"`|
 //!| `let parser = 'a'.fab_map(`[`char::to_ascii_uppercase`]`)` | `let mut input = "abc"` | `parser.fab(&mut input)` | `A` | `"bc"`|
+//!| `let parser = '1'.fab_try_map(❘c❘ c.to_digit(10))` | `let mut input = "123"` | `parser.fab(&mut input)` | `1` | `"23"`|
+//!| `let parser = 'a'.fab_try_map(❘c❘ c.to_digit(10))` | `let mut input = "abc"` | `parser.fab(&mut input)` | `FabError(...)` | `"abc"`|
+//!| `let parser = 'a'.fab_repeat()` | `let mut input = "aabb"` | `parser.fab(&mut input)` | `vec['a','a']` | `"bb"`|
+//!| `let parser = 'a'.fab_repeat()` | `let mut input = "bbbb"` | `parser.fab(&mut input)` | `vec[]` | `"bbbb"`|
+//!| `let parser = 'a'.fab_repeat().min(1)` | `let mut input = "bbbb"` | `parser.fab(&mut input)` | `FabError(...)` | `"bbbb"`|
+//! 
+//! fab_try_map works both with functions that return Results and ones that return Options.
+//! 
+//! The [`Repeat`] struct has additional method for customization trait. These include setting a maximum
+//! number of items to parse, or outputting a custom data structure.
+//! 
+//! These parsers can be combined with these methods. 
+//! 
+//!| Parser | Input | Parsing |Output | Input after parsing|
+//!| - | - | - | - | - |
+//!| `alt('a','b')` | `let mut input = "abc"` | `alt('a','b').fab(&mut input)` | `a` | `"bc"`|
+//!| `alt('a','b')` | `let mut input = "bca"` | `alt('a','b').fab(&mut input)` | `b` | `"ca"`|
+//!| `alt('a','b')` | `let mut input = "cab"` | `alt('a','b').fab(&mut input)` | `FabError(...)` | `"cab"`|
+//!| `opt('a')` | `let mut input = "abc"` | `opt('a').fab(&mut input)` | `Some('a')` | `"bc"`|
+//!| `opt('a')` | `let mut input = "cab"` | `opt('a').fab(&mut input)` | `None` | `"cab"`|
+//!| `take_not('a')` | `let mut input = "cab"` | `take_not('a').fab(&mut input)` | `'c'` | `"ab"`|
+//!| `take_not('a')` | `let mut input = "abc"` | `take_not('a').fab(&mut input)` | `FabError(...)` | `"abc"`|
 //! 
 //! Some code is inspired by Winnow by Elliot Page + other contributors.
 
@@ -52,6 +77,7 @@ pub mod repeat;
 pub mod sequence;
 #[doc(hidden)]
 pub mod tag;
+pub mod util;
 
 use std::{
     fmt::Debug,
@@ -80,6 +106,7 @@ pub enum ParserType {
     Function,
     TakeNot,
     Repeat,
+    RepeatIter,
     Sequence,
     Permutation,
 }
@@ -158,7 +185,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
             self,
             Reducer {
                 acc: Vec::new(),
-                reduce_fn: |vec: &mut Vec<O>, val| vec.push(val),
+                reduce_operator: |vec: &mut Vec<O>, val| vec.push(val),
             },
             0..usize::MAX,
         )
@@ -196,7 +223,8 @@ pub fn permutation<T>(parsers: T) -> branch::Permutation<T> {
 
 /**
  * `take(x: usize) `Constructs a parser that takes `x` items. For strings, this
- * will be characters and for arrays it will be elements. This parser always outputs a slice.
+ * will be characters and for arrays it will be elements. This parser outputs a &str for an input of &str
+ * and a &\[T\] for an input of &\[T\]
  */
 pub fn take(count: usize) -> tag::Take {
     tag::Take(count)

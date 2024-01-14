@@ -97,6 +97,7 @@ where
         }
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct Opt<P> {
     pub parser: P,

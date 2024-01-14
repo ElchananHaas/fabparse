@@ -442,11 +442,11 @@ fn repeat_max_success() {
 }
 
 #[test]
-fn repeat_max_fail() {
+fn repeat_max() {
     let mut input = "aac";
     let res: Result<_, FabError> = 'a'.fab_repeat().max(2).fab(&mut input);
-    assert!(res.is_err());
-    assert_eq!("aac", input);
+    assert_eq!(vec!['a'], res.unwrap());
+    assert_eq!("ac", input);
 }
 
 fn char_num<'a>(input: &mut &'a str) -> Result<(char, u32), FabError> {
