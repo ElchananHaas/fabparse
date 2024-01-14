@@ -219,7 +219,7 @@ impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, 
     }
     /**
      * Sets as exclusive maximum limit of the the number of repititions of this parser.
-     * If it would exceed it, it fails.
+     * When it hits the limit, it succeeds with its current output.
      */
     pub fn max(self, max: usize) -> Self {
         Repeat::new(self.parser, self.reducer, self.bounds.start..max)
