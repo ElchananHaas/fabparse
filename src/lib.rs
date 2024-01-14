@@ -1,24 +1,71 @@
-//Some code is based on Winnow by Elliot Page + other contributors.
+//! > Fabparse. A minimized parser combinator library.
+//!  
+//! Fabparse is a minimized trait based parser combinator library. Most of the 
+//! functionality is within the [`Parser`] trait. Fabparse implements the parser trait
+//! for a wide variety of types, rather than have different methods for each type. 
+//! It restricts itself to a few powerful and composable operations.
+//! 
+//! All of these are parsers.
+//! 
+//!| Parser | Input | Parsing |Output | Input after parsing|
+//!| - | - | - | - | - |
+//!| `'a'` | `let mut input = "abc"` | `'a'.fab(&mut input)` | `'a'` | `"bc"`|
+//!| `"abc"` | `let mut input = "abcdef"` | `"abc".fab(&mut input)` | `"abc"` | `"def"`|
+//!| `[1, 2]` | `let mut input =  [1, 2, 3].as_slice()` | `[1, 2].fab(&mut input)` | `[1, 2]` | `[3]`|
+//!| `('a'..='z')` | `let mut input = "zyx"` | `('a'..='z').fab(&mut input)` | `z` | `"yx"`|
+//!| `❘c❘ c=='m'` | `let mut input = "moo"` | `(❘c❘ c=='m').fab(&mut input)` | `'m'` | `"oo"`|
+//!| [`char::is_ascii_digit`] | `let mut input = "123"` | `char::is_ascii_digit.fab(&mut input)` | `'1'` | `"23"`|
+//!| `let parser = ❘c: char❘ if c=='m' {Some(5)} else {None}` | `let mut input = "moo"` | `parser.fab(&mut input)` | `5` | `"oo"`|
+//!| `let parser = ❘c: char❘ if c=='m' {Ok(5)} else {Err(ErrType)}` | `let mut input = "moo"` | `parser.fab(&mut input)` | `5` | `"oo"`|
+//! 
+//! Custom functions can also be parsers.
+//! 
+//! `
+//! fn is_it_a(input: &mut &str) -> Result<char, FabError> {
+//!     'a'.fab(input)
+//! }
+//! `
+//! 
+//!| Parser | Input | Parsing |Output | Input after parsing|
+//!| - | - | - | - | - |
+//!| `is_it_a` | `let mut input = "abc"` | `is_it_a.fab(&mut input)` | `'a'` | `"bc"`|
+//! 
+//! These parsers can be modified and combined through the methods available 
+//! in the [`Parser`] trait. 
+//! 
+//!| Parser | Input | Parsing |Output | Input after parsing|
+//!| - | - | - | - | - |
+//!| `let parser = 'a'.fab_value(5)` | `let mut input = "abc"` | `parser.fab(&mut input)` | `5` | `"bc"`|
+//!| `let parser = 'a'.fab_map(`[`char::to_ascii_uppercase`]`)` | `let mut input = "abc"` | `parser.fab(&mut input)` | `A` | `"bc"`|
+//! 
+//! Some code is inspired by Winnow by Elliot Page + other contributors.
 
-mod branch;
-mod combinator;
-mod error;
-mod repeat;
-mod sequence;
-mod tag;
+#[doc(hidden)]
+pub mod branch;
+#[doc(hidden)]
+pub mod combinator;
+#[doc(hidden)]
+pub mod error;
+#[doc(hidden)]
+pub mod repeat;
+#[doc(hidden)]
+pub mod sequence;
+#[doc(hidden)]
+pub mod tag;
 
 use std::{
     fmt::Debug,
     marker::PhantomData,
 };
 
-use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Try, Value};
+use combinator::{Opt, ParserMap, ParserTryMap, TakeNot, Value};
 pub use error::FabError;
 pub use error::ParserError;
 pub use error::NoContextFabError;
 pub use repeat::TryReducer;
 pub use repeat::TryReducerError;
-use repeat::{Reducer, Repeat};
+pub use repeat::Repeat;
+use repeat::Reducer;
 /**
  * This enum represents the kinds of parsers in Fabparse. This is used in errors to 
  * identify the parser that failed.
@@ -48,7 +95,7 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     /**
      * Returns a parser that replaces the output of the underlying parser with V.
      */
-    fn fab_value<V>(self, value: V) -> combinator::Value<Self, V, I, O, E>
+    fn fab_value<V: Clone>(self, value: V) -> combinator::Value<Self, V, I, O, E>
     where
         Self: Sized,
     {
@@ -59,20 +106,6 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
             phantom_o: PhantomData,
             phantom_e: PhantomData,
         }
-    }
-    /**
-     * This creates a Try parser that unwraps the output of the underlying parser
-     * if it returns Result::Ok or Option::Some.
-     * If it returns None or Err, then the Try parser will fail.
-     *
-     * Only use this method on parsers that return an Option or Result.
-     * Otherwise, the returned parser won't implemented the Parser trait.
-     */
-    fn fab_try(self) -> Try<Self>
-    where
-        Self: Sized,
-    {
-        Try { parser: self }
     }
     /**
      * This creates a Map parser that applies the function to the
@@ -92,9 +125,8 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
         }
     }
     /**
-     * This parser composes the behavior of the Try and Map parsers. It
-     * first maps the input, and if the result is Option::Some or Result::Ok,
-     * it unwraps the input. Othewise, the parser fails.
+     * This parser first maps the input, and if the result is Option::Some or Result::Ok,
+     * it unwraps the input. Othewise, the parser fails. 
      *
      */
     fn fab_try_map<F>(self, func: F) -> ParserTryMap<Self, I, O, E, F>
@@ -111,37 +143,10 @@ pub trait Parser<'a, I: ?Sized, O, E: ParserError, ParserType> {
     }
     /**
      * Repeats the underlying parser, returning the results in a Vec. This
-     * parser will accept any number of repetitions, inlcuding 0.
+     * parser will accept any number of repetitions, including 0.
      *
-     * The repeat method has some methods to modify its behavior, which can be composed with each other. They are:
-     *
-     * min(usize). Sets an inclusive lower bound on the number of repetitions for the parser to succeed.
-     *
-     * max(usize). Sets an exclusive upper bound of the maximum number of repetitions of the parser for it to succeed.
-     * If it would exceed this number, it fails.
-     *
-     * `bound(impl RangeBounds<usize>)`. Takes in any range type. repeat.bound(min..max) is equivilent to calling repeat.min(min).max(max)
-     * This method can also accept min..=max, min.., ..=max, and ..
-     *
-     * reduce(acc, fn(&mut acc, O) -> ()) where O is the output type of the underlying parser.
-     * reduce(acc, fn(&mut acc, O) -> Result<(), ErrorType>))
-     * reduce(acc, fn(&mut acc, O) -> Option<()>)
-     * reduce(acc, fn(&mut acc, O) -> bool)
-     * retuce(acc, custom type implementing TryReducer)
-     *
-     * Replaces the Vec output of the parser. Every iteration of the repeat,
-     * the repeat parser will call the reduction function with the current accumulator and the output of
-     * the underlying parser. This can be used to create HashMaps or other data structures from the repeat parser.
-     *
-     * The accumulator must be Clone. Caution: The output of the reduction
-     * function MUST be a unit type. HashMap::insert returns an option, not the unit type.
-     * In some cases it might be easier to implement the TryReducer trait rather
-     * than using a huge lambda.
-     *
-     * The reduce method also works with a function returning Result<(), ErrorType> where ErrorType is any type
-     * that is 'static + Send + Sync + Error. In this case, the repeat parser will act as a try reduce, failing
-     * when the reduction function returns an error. For the option and boolean cases, it will fail when the
-     * function returns None or false, respectively.
+     * The repeat method has some methods to modify its behavior, which can be composed with each other. See the
+     * [`Repeat`] struct for these emthods. 
      *
      */
     fn fab_repeat(self) -> Repeat<Self, I, O, E, fn(&mut Vec<O>, O) -> (), Vec<O>>

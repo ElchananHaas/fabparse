@@ -14,7 +14,7 @@ pub trait Sequence {
     fn try_split_front<'a>(&'a self) -> Option<(Self::Item, &'a Self)>;
     /**
      * Gets the length of a sequence. This will be in bytes for &str,
-     * and number of elements for [T]
+     * and number of elements for \[T\]
      */
     fn len(&self) -> usize;
 

@@ -229,30 +229,6 @@ fn take_map_fail() {
     assert_eq!("abc", input);
 }
 
-#[test]
-fn try_success() {
-    let mut input = "abc";
-    let res: Result<_, FabError> = take(1).fab_map(|_| Some(5)).fab_try().fab(&mut input);
-    assert_eq!(5, res.unwrap());
-    assert_eq!("bc", input);
-}
-
-#[test]
-fn try_parser_inner_fail() {
-    let mut input = "abc";
-    let res: Result<_, FabError> = take(4).fab_map(|_| Some(5)).fab_try().fab(&mut input);
-    assert!(res.is_err());
-    assert_eq!("abc", input);
-}
-
-#[test]
-fn try_parser_none_fail() {
-    let mut input = "abc";
-    let res: Result<_, FabError> = take(1).fab_map(|_| None::<i32>).fab_try().fab(&mut input);
-    assert!(res.is_err());
-    assert_eq!("abc", input);
-}
-
 #[derive(Debug)]
 struct TestError;
 
@@ -267,51 +243,6 @@ impl Error for TestError {
         None
     }
 }
-
-#[test]
-fn try_result_success() {
-    let mut input = "abc";
-    let res: Result<_, FabError> = take(1)
-        .fab_map(|_| Ok::<_, TestError>(5))
-        .fab_try()
-        .fab(&mut input);
-    assert_eq!(5, res.unwrap());
-    assert_eq!("bc", input);
-}
-
-#[test]
-fn try_result_parser_inner_fail() {
-    let mut input = "abc";
-    let res: Result<_, FabError> = take(4)
-        .fab_map(|_| Ok::<_, TestError>(5))
-        .fab_try()
-        .fab(&mut input);
-    assert!(res.is_err());
-    assert_eq!("abc", input);
-}
-
-#[test]
-fn try_result_parser_none_fail() {
-    let mut input = "abc";
-    let res: Result<_, FabError> = take(4)
-        .fab_map(|_| Err::<i32, _>(TestError))
-        .fab_try()
-        .fab(&mut input);
-    assert!(res.is_err());
-    assert_eq!("abc", input);
-}
-
-#[test]
-fn try_result_trait_method_success() {
-    let mut input = "abc";
-    let res: Result<_, FabError> = take(1)
-        .fab_map(|_| Ok::<_, TestError>(5))
-        .fab_try()
-        .fab(&mut input);
-    assert_eq!(5, res.unwrap());
-    assert_eq!("bc", input);
-}
-
 #[test]
 fn map_trait_method_success() {
     let mut input = "abc";

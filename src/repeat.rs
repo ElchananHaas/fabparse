@@ -1,13 +1,11 @@
 use std::{
-    convert::Infallible,
+    convert::Infallible, 
     error::Error,
     marker::PhantomData,
     ops::{Range, RangeBounds}, fmt::Display,
 };
 
 use crate::{sequence::Sequence, Parser, ParserError, ParserType};
-
-
 /**
  * Repeat parsers can be customized with a custom try reduce function, see the TryReducer trait.
  * This error will be used for reducers that return Option<()> or 
@@ -90,6 +88,11 @@ pub struct Reducer<F, Acc: Clone> {
     pub acc: Acc,
     pub reduce_fn: F,
 }
+/**
+ * This struct can be constructed through the method `fab_repeat` on any parser. 
+ * It can be customized with a min/max number of repititions, or a custom 
+ * try reduce.
+ */
 pub struct Repeat<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> {
     parser: P,
     reducer: Reducer<F, Acc>,
@@ -100,6 +103,9 @@ pub struct Repeat<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> {
 }
 
 impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, Acc> {
+    /**
+     * Constructs a new repeat parser. Prefer to use the method `fab_repeat` in the parser trait.
+     */
     pub fn new(parser: P, reducer: Reducer<F, Acc>, bounds: Range<usize>) -> Self {
         Repeat {
             parser,
@@ -205,14 +211,22 @@ where
 }
 
 impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, Acc> {
+    /**
+     * Sets an inclusive minimum number of repititions for this parser to succeed.
+     */
     pub fn min(self, min: usize) -> Self {
         Repeat::new(self.parser, self.reducer, min..self.bounds.end)
     }
-
+    /**
+     * Sets as exclusive maximum limit of the the number of repititions of this parser.
+     * If it would exceed it, it fails.
+     */
     pub fn max(self, max: usize) -> Self {
         Repeat::new(self.parser, self.reducer, self.bounds.start..max)
     }
-
+    /**
+     * Sets both a minimum and maximum number of repitions for this parser to succeed.
+     */
     pub fn bound<B: RangeBounds<usize>>(self, bounds: B) -> Self {
         let lower = match bounds.start_bound() {
             std::ops::Bound::Included(val) => *val,
@@ -240,7 +254,15 @@ impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, 
         };
         Repeat::new(self.parser, self.reducer, lower..upper)
     }
-
+    /**
+     * By default this parser will output a vec. This method allows that to be replaced
+     * with a custom type to costruct HashMaps or other custom output types. 
+     * This method takes in `acc`, the accumulator base case and `reduce_fn` the 
+     * custom try reduce function. `reduce_fn` can be of the form
+     * `fn(&mut acc)->()` if it always succeeds. If if can fail, it can 
+     * be of the forms `[fn(&mut acc)->Option<()>, fn(&mut acc)->bool, fn(&mut acc)->Result<(),E> ]`
+     * It can also be a custom struct that implements the TryReducer trait.
+     */
     pub fn reduce<NewAcc: Clone, NewF>(
         self,
         acc: NewAcc,

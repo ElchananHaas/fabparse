@@ -30,48 +30,7 @@ where
         }
     }
 }
-#[derive(Clone, Debug)]
-pub struct Try<P> {
-    pub parser: P,
-}
-pub struct TryParser<T> {
-    t: PhantomData<T>,
-}
 
-impl<'a, I: ?Sized + Sequence, O, E: ParserError, P, PType> Parser<'a, I, O, E, TryParser<PType>>
-    for Try<P>
-where
-    P: Parser<'a, I, Option<O>, E, PType>,
-{
-    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
-        let checkpoint = *input;
-        let parsed = self.parser.fab(input)?;
-        parsed.ok_or_else(|| {
-            *input = checkpoint;
-            E::from_parser_error(*input, ParserType::Try)
-        })
-    }
-}
-pub struct TryResultParser<T, Err> {
-    t: PhantomData<T>,
-    err: PhantomData<Err>,
-}
-impl<'a, I, O, E: ParserError, P, PType, Err>
-    Parser<'a, I, O, E, TryResultParser<PType, Err>> for Try<P>
-where
-    P: Parser<'a, I, Result<O, Err>, E, PType>,
-    Err: Error + Send + Sync + 'static,
-    I: ?Sized + Sequence
-{
-    fn fab(&self, input: &mut &'a I) -> Result<O, E> {
-        let checkpoint = *input;
-        let parsed = self.parser.fab(input)?;
-        parsed.map_err(|err| {
-            *input = checkpoint;
-            E::from_external_error(*input, ParserType::Try, err)
-        })
-    }
-}
 #[derive(Clone, Debug)]
 pub struct ParserTryMap<P, I: ?Sized, M, E, F> {
     pub parser: P,
