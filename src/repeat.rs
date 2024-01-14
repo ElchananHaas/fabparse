@@ -269,6 +269,9 @@ impl<P, ParI: ?Sized, ParO, ParE, F, Acc: Clone> Repeat<P, ParI, ParO, ParE, F, 
         };
         Repeat::new(self.parser, self.reducer, lower..upper)
     }
+    /**
+     * Returns the slice of the input that this parser matched. &str when parsing &str, &\[T\] when parsing  &\[T\]
+     */
     pub fn as_input_slice(self) -> Repeat<P, ParI, ParO, ParE, InputSliceReducer, ()> {
         Repeat::new(self.parser, Reducer { acc: (), reduce_operator: InputSliceReducer }, self.bounds)
     }
