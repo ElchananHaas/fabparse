@@ -39,37 +39,37 @@ impl Error for TryReducerError {}
  * 
  * `FErr`: The error type of the accumutation function.
  */
-pub trait TryReducer<Acc, T, FType, FErr, Out> {
+pub trait TryReducer<'a, Acc, T, FType, FErr, Out, I: ?Sized> {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), FErr>;
-    fn finalize(&self, acc: Acc) -> Out;
+    fn finalize(&self, acc: Acc, orig_input: &'a I, new_input: &'a I) -> Out;
 }
 
 pub struct ResultReducer;
-impl<Acc, T, F, FErr> TryReducer<Acc, T, ResultReducer, FErr, Acc> for F
+impl<'a, Acc, T, F, FErr, I: ?Sized> TryReducer<'a, Acc, T, ResultReducer, FErr, Acc, I> for F
 where
     F: Fn(&mut Acc, T) -> Result<(), FErr>,
 {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), FErr> {
         self(acc, val).map(|_| ())
     }
-    fn finalize(&self, acc: Acc) -> Acc {
+    fn finalize(&self, acc: Acc, _orig_input: &'a I, _new_input: &'a I) -> Acc {
         acc
     }
 }
 pub struct OptionReducer();
-impl<Acc, T, F> TryReducer<Acc, T, OptionReducer, TryReducerError, Acc> for F
+impl<'a, Acc, T, F, I: ?Sized> TryReducer<'a, Acc, T, OptionReducer, TryReducerError, Acc, I> for F
 where
     F: Fn(&mut Acc, T) -> Option<()>,
 {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), TryReducerError> {
         self(acc, val).ok_or(TryReducerError).map(|_| ())
     }
-    fn finalize(&self, acc: Acc) -> Acc {
+    fn finalize(&self, acc: Acc, _orig_input: &'a I, _new_input: &'a I) -> Acc {
         acc
     }
 }
 pub struct BoolReducer;
-impl<Acc, T, F> TryReducer<Acc, T, BoolReducer, TryReducerError, Acc> for F
+impl<'a, Acc, T, F, I: ?Sized> TryReducer<'a, Acc, T, BoolReducer, TryReducerError, Acc, I> for F
 where
     F: Fn(&mut Acc, T) -> bool,
 {
@@ -80,23 +80,38 @@ where
             Err(TryReducerError)
         }
     }
-    fn finalize(&self, acc: Acc) -> Acc {
+    fn finalize(&self, acc: Acc, _orig_input: &'a I, _new_input: &'a I) -> Acc {
         acc
     }
 }
 
 pub struct InfallibleReducer;
-impl<Acc, T, F> TryReducer<Acc, T, InfallibleReducer, Infallible, Acc> for F
+impl<'a, Acc, T, F, I: ?Sized> TryReducer<'a, Acc, T, InfallibleReducer, Infallible, Acc, I> for F
 where
     F: Fn(&mut Acc, T) -> (),
 {
     fn try_reduce(&self, acc: &mut Acc, val: T) -> Result<(), Infallible> {
         Ok(self(acc, val)).map(|_| ())
     }
-    fn finalize(&self, acc: Acc) -> Acc {
+    fn finalize(&self, acc: Acc, _orig_input: &'a I, _new_input: &'a I) -> Acc {
         acc
     }
 }
+
+pub struct InputSliceReducer;
+impl<'a, T, I: ?Sized> TryReducer<'a, (), T, InputSliceReducer, Infallible, &'a I, I> for InputSliceReducer
+    where I: Sequence
+{
+    fn try_reduce(&self, _acc: &mut (), _val: T) -> Result<(), Infallible> {
+        Ok(())
+    }
+    fn finalize(&self, _acc: (), orig_input: &'a I, new_input: &'a I) -> &'a I {
+        let size = new_input.len() - orig_input.len();
+        let (first, _rest) = orig_input.try_split_at(size).expect("Valid split boundary");
+        first
+    }
+}
+
 pub struct Reducer<Reduce, Acc: Clone> {
     pub acc: Acc,
     pub reduce_operator: Reduce,
@@ -155,7 +170,7 @@ where
     P: Parser<'a, I, O, E, PType>,
     Acc: Clone,
     FErr: 'static + Send + Sync + Error,
-    F: TryReducer<Acc, O, ReducerOut, FErr, AccOut>,
+    F: TryReducer<'a, Acc, O, ReducerOut, FErr, AccOut, I>,
 {
     fn fab(&self, input: &mut &'a I) -> Result<AccOut, E> {
         let mut res = self.reducer.acc.clone();
@@ -168,7 +183,7 @@ where
         loop {
             // Break out of the loop early if we hit the repetition limit.
             if repetitions == self.bounds.end - 1 {
-                return Ok(self.reducer.reduce_operator.finalize(res));
+                return Ok(self.reducer.reduce_operator.finalize(res, orig_input, input));
             }
             //This will be used if the try reduce fails to get a 
             //correct location of where the parser started.
@@ -198,7 +213,7 @@ where
                 Err(_) => {
                     //The underlying parser failed, so return the results up to here.
                     if self.bounds.contains(&repetitions) {
-                        return Ok(self.reducer.reduce_operator.finalize(res));
+                        return Ok(self.reducer.reduce_operator.finalize(res, orig_input, input));
                     } else {
                         *input = orig_input;
                         return Err(E::from_parser_error(*input, ParserType::Repeat));
