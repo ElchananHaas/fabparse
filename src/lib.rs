@@ -44,6 +44,7 @@
 //!| `let parser = 'a'.fab_try_map(❘c❘ c.to_digit(10))` | `let mut input = "abc"` | `parser.fab(&mut input)` | `FabError(...)` | `"abc"`|
 //!| `let parser = 'a'.fab_repeat()` | `let mut input = "aabb"` | `parser.fab(&mut input)` | `vec['a','a']` | `"bb"`|
 //!| `let parser = 'a'.fab_repeat()` | `let mut input = "bbbb"` | `parser.fab(&mut input)` | `vec[]` | `"bbbb"`|
+//!| `let parser = 'a'.fab_repeat().as_input_slice()` | `let mut input = "aabb"` | `parser.fab(&mut input)` | `"aa"` | `"bb"`|
 //!| `let parser = 'a'.fab_repeat().min(1)` | `let mut input = "bbbb"` | `parser.fab(&mut input)` | `FabError(...)` | `"bbbb"`|
 //! 
 //! fab_try_map works both with functions that return Results and ones that return Options.
