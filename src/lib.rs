@@ -66,17 +66,11 @@
 //! 
 //! Some code is inspired by Winnow by Elliot Page + other contributors.
 
-#[doc(hidden)]
 pub mod branch;
-#[doc(hidden)]
 pub mod combinator;
-#[doc(hidden)]
 pub mod error;
-#[doc(hidden)]
 pub mod repeat;
-#[doc(hidden)]
 pub mod sequence;
-#[doc(hidden)]
 pub mod tag;
 pub mod util;
 
