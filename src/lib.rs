@@ -64,7 +64,7 @@
 //!| `take_not('a')` | `let mut input = "cab"` | `take_not('a').fab(&mut input)` | `'c'` | `"ab"`|
 //!| `take_not('a')` | `let mut input = "abc"` | `take_not('a').fab(&mut input)` | `FabError(...)` | `"abc"`|
 //! 
-//! Some code is inspired by Winnow by Elliot Page + other contributors.
+//! Some code is inspired by Winnow by Ed Page + other contributors.
 
 pub mod branch;
 pub mod combinator;
